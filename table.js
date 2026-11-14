@@ -1,4 +1,5 @@
 import * as T from './vendor/three.module.js';
+import { createBirthdayMemory } from './memory.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
@@ -505,7 +506,9 @@ scene.add(key);
 const fill=new T.DirectionalLight('#cdd5f7',1.18);
 fill.position.set(6,4,1.5);scene.add(fill);
 
+const memory = createBirthdayMemory(room, tableHeight, cakeHit, joyHit, wavingArm);
 const actions = new Map([
+  [memory.pedestal, { id: 'memory', height: 1.10, radius: .57 }],
   [cakeHit, { id: 'candle', height: 2.83, radius: 1.87 }],
   [joyHit, { id: 'joy', height: 2.39, radius: .72 }],
   [letterHit, { id: 'letter', height: .22, radius: 1.02 }],
@@ -551,6 +554,7 @@ const labels = {
   relight: ['重新点亮', 'Relight the candles'],
   joy: ['跟乐乐打招呼', 'Say hi to Joy'],
   letter: ['拆开信封', 'Open the envelope'],
+  memory: ['看看今天的记忆球', 'Revisit the birthday memory'],
   pancit: ['看看这盘生日面', 'Discover the birthday noodles'],
   lamp: ['切到烛光', 'Switch to candlelight'],
   brighten: ['打开房间灯光', 'Brighten the room']
@@ -596,7 +600,7 @@ function hit(x, y, finger = false) {
     for (const {object} of ray.intersectObjects(objects, true)) {
       let node = object;
       while (node?.visible && !actions.has(node)) node = node.parent;
-      if (actions.has(node) && node.visible) return node;
+      if (actions.has(node) && node.visible && (node !== memory.pedestal || memory.collected)) return node;
     }
   }
   return null;
@@ -650,7 +654,7 @@ function updateDiscoveryMarks() {
   for (const [object, mark] of marks) {
     const {height} = actions.get(object);
     const [x, y] = projectObject(object, height);
-    mark.hidden = object === hovered || x < 12 || x > stage.clientWidth - 12 || y < 85 || y > stage.clientHeight - 20;
+    mark.hidden = (object === memory.pedestal && !memory.collected) || object === hovered || x < 12 || x > stage.clientWidth - 12 || y < 85 || y > stage.clientHeight - 20;
     if (!mark.hidden) {
       mark.style.left = x + 'px';
       mark.style.top = (y - 10) + 'px';
@@ -670,7 +674,8 @@ function size() {
   portrait = camera.aspect < .9;
   camera.fov = portrait ? 44 : 36;
   distance = portrait ? Math.min(29, Math.max(13.2, 10.8 / camera.aspect)) : 12.4;
-  target.set(0, portrait ? 1.57 : 1.53, portrait ? .07 : .17);
+  normalFocus.set(0, portrait ? 1.57 : 1.53, portrait ? .07 : .17);
+  if (!returnView) target.copy(normalFocus);
   camera.updateProjectionMatrix();
   renderer.setSize(width, height, false);
   hoverDirty = true;
@@ -778,7 +783,17 @@ $('pancit').addEventListener('click', () => {
   clearHover();
   $('pancit-card').showModal();
 });
-$('joy').addEventListener('click', () => openWithMotion('joy-card', 'joy', 1050));
+$('joy').addEventListener('click', () => {
+  if (memory.phase === 'playing') return;
+  if (memory.collected) $('memory').click();
+  else openWithMotion('joy-card', 'joy', 1050);
+});
+$('memory').addEventListener('click', () => {
+  if (memory.phase === 'saved' && !document.querySelector('dialog[open]')) {
+    clearHover();
+    $('memory-card').showModal();
+  }
+});
 $('letter').addEventListener('click', () => {
   if (!stage.closest('.failed')) openWithMotion('card', 'letter', 650);
 });
@@ -787,6 +802,72 @@ $('card').addEventListener('close', () => {
   requestDraw();
 });
 
+const caption = $('memory-caption');
+let captionTimer;
+let finaleSince = 0;
+let finaleStage = -1;
+let returnView = null;
+const normalFocus = new T.Vector3();
+const finalFocus = new T.Vector3(memory.orbit.x, memory.orbit.y, memory.orbit.z);
+const captions = [
+  ['等一下，今天有好多值得留下来的瞬间！', 'Wait! There’s so much from today I want to keep!'],
+  ['看，烛光、生日面，还有我们一起笑的这一刻。', 'Look! The candles, the birthday noodles, and this moment we shared.'],
+  ['接住啦！这颗给你，琳琳。', 'Got it! This one is yours, Linlin.'],
+  ['今天的记忆收好了。点亮着的球，可以再看一眼。', 'Today’s memory is safe. Tap the glowing orb to revisit it.']
+];
+function finaleCaption(step) {
+  if (finaleStage === step) return;
+  finaleStage = step;
+  const [zh, en] = captions[step];
+  const english = document.createElement('span');
+  english.lang = 'en';
+  english.textContent = en;
+  caption.replaceChildren(zh, english);
+  caption.hidden = false;
+}
+function playFinale() {
+  if (memory.phase === 'playing') return;
+  const dialog = document.querySelector('dialog[open]');
+  if (dialog) dialog.close();
+  hideGuide();
+  clearHover();
+  clearTimeout(captionTimer);
+  keyboardObject = null;
+  keyboardView = false;
+  gesture = null;
+  touches.clear();
+  pinch = null;
+  stage.classList.remove('dragging');
+  clearTimeout(noticeTimer);
+  $('notice').textContent = '';
+  finaleSince = performance.now();
+  finaleStage = -1;
+  finaleCaption(0);
+  returnView = {azimuth, elevation, zoom};
+  // Draw immediately before capturing: the WebGL drawing buffer may be cleared between frames.
+  if (!memory.collected) renderer.render(scene, camera);
+  memory.start(finaleSince, renderer.domElement, motion.matches);
+  $('memory').hidden = true;
+  for (const control of keyboardControls) control.disabled = true;
+  requestDraw();
+}
+$('collect-memory').addEventListener('click', playFinale);
+$('replay-memory').addEventListener('click', playFinale);
+
+function finishFinale() {
+  for (const control of keyboardControls) control.disabled = false;
+  $('memory').hidden = false;
+  azimuth = returnView.azimuth;
+  elevation = returnView.elevation;
+  zoom = returnView.zoom;
+  returnView = null;
+  finaleCaption(3);
+  if (document.activeElement === document.body) {
+    $('memory').focus({preventScroll: true});
+    if (!$('memory').matches(':focus-visible')) $('memory').blur();
+  }
+  captionTimer = setTimeout(() => { caption.hidden = true; }, 6900);
+}
 function fingerDistance() {
   const [a, b] = touches.values();
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -797,7 +878,7 @@ function beginGesture(event, tap) {
     action: tap ? hit(x, y, pointerType === 'touch') : null, drag: false};
 }
 stage.addEventListener('pointerdown', (event) => {
-  if (event.button !== 0) return;
+  if (event.button !== 0 || memory.phase === 'playing') return;
   if (event.pointerType === 'touch') {
     if (touches.size === 2) return;
     touches.set(event.pointerId, {x: event.clientX, y: event.clientY});
@@ -873,7 +954,7 @@ stage.addEventListener('pointercancel', (event) => release(event, false));
 stage.addEventListener('lostpointercapture', (event) => release(event, false));
 stage.addEventListener('pointerleave', clearHover);
 stage.addEventListener('wheel', (event) => {
-  if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
+  if (event.ctrlKey || event.metaKey || event.deltaY === 0 || memory.phase === 'playing') return;
   event.preventDefault();
   hideGuide();
   zoom = clamp(zoom + Math.sign(event.deltaY) * .07, portrait ? .86 : .76, 1.2);
@@ -898,9 +979,18 @@ function render(time) {
   shownAzimuth = interpolate(shownAzimuth, azimuth, ease);
   shownElevation = interpolate(shownElevation, elevation, ease);
   shownZoom = interpolate(shownZoom, zoom, ease);
-  const span = Math.cos(shownElevation) * distance * shownZoom;
+  const finaleTime = returnView ? Math.max(0, (time - finaleSince) / 1000) : 0;
+  let memoryCamera = 0;
+  if (returnView && memory.phase === 'playing') {
+    memoryCamera = T.MathUtils.smoothstep(finaleTime, .50, 2.72) *
+      (1 - T.MathUtils.smoothstep(finaleTime, 4.38, 5.38));
+    finaleCaption(finaleTime < 1.18 ? 0 : finaleTime < 3.05 ? 1 : 2);
+  }
+  target.copy(normalFocus).lerp(finalFocus, memoryCamera);
+  const cameraDistance = distance * shownZoom * (1 - memoryCamera * (portrait ? .16 : .25));
+  const span = Math.cos(shownElevation) * cameraDistance;
   camera.position.set(target.x + Math.sin(shownAzimuth) * span,
-    target.y + Math.sin(shownElevation) * distance * shownZoom,
+    target.y + Math.sin(shownElevation) * cameraDistance,
     target.z + Math.cos(shownAzimuth) * span);
   camera.lookAt(target);
   camera.updateMatrixWorld();
@@ -908,9 +998,11 @@ function render(time) {
   const lightProgress = moving ? easeOut((time - dimBegin) / 610) : 1;
   dimMix = interpolate(dimFrom, Number(dim), lightProgress);
   toggle.rotation.x = interpolate(-.43, .43, dimMix);
-  key.intensity = interpolate(3, .56, dimMix);
-  fill.intensity = interpolate(1.18, .44, dimMix);
-  bounce.intensity = interpolate(1.5, .46, dimMix);
+  const closingLight = returnView && moving ? memoryCamera * .77 : 0;
+  const roomDim = Math.max(dimMix, closingLight);
+  key.intensity = interpolate(3, .56, roomDim);
+  fill.intensity = interpolate(1.18, .44, roomDim);
+  bounce.intensity = interpolate(1.5, .46, roomDim);
   lampKey.intensity = interpolate(34, 54, dimMix);
   bulbMat.emissiveIntensity = interpolate(1.8, 3.2, dimMix);
   renderer.toneMappingExposure = interpolate(1.26, 1.14, dimMix);
@@ -940,10 +1032,11 @@ function render(time) {
   const waving = (time - joyStart) / 1000;
   const activeJoy = moving && waving >= 0 && waving < 1.13;
   const hop = activeJoy ? Math.sin(Math.PI * waving / 1.13) : 0;
-  wavingArm.rotation.z = activeJoy ? hop * .45 * Math.sin(waving * 23) : 0;
-  toy.position.y = .16 + .13 * hop;
-  toy.rotation.y = -.11 + .30 * hop;
-  head.rotation.z = activeJoy ? .095 * hop * Math.sin(waving * 12) : 0;
+  const reaching = memoryCamera * T.MathUtils.smoothstep(finaleTime, 1.10, 2.55);
+  wavingArm.rotation.z = activeJoy ? hop * .45 * Math.sin(waving * 23) : .33 * reaching;
+  toy.position.y = .16 + .13 * hop + .06 * reaching;
+  toy.rotation.y = -.11 + .30 * hop - .48 * reaching;
+  head.rotation.z = activeJoy ? .095 * hop * Math.sin(waving * 12) : .18 * reaching;
   joyRing.visible = activeJoy;
   joyRing.rotation.z = activeJoy ? waving * .30 : 0;
 
@@ -978,16 +1071,21 @@ function render(time) {
     hovered = hit(...hoverPoint);
     stage.style.cursor = hovered ? 'pointer' : '';
   }
+  if (memory.update(time, !moving) || (returnView && memory.phase === 'saved')) finishFinale();
   updateHover();
   updateDiscoveryMarks();
-  if (activeJoy || wasWaving || unfolding !== wasUnfolding || closing || (opening && letterAge < .66) || lightProgress < 1) {
+  if (activeJoy || wasWaving || unfolding !== wasUnfolding || closing || (opening && letterAge < .66) || lightProgress < 1 || returnView) {
     renderer.shadowMap.needsUpdate = true;
   }
   wasWaving = activeJoy;
   wasUnfolding = unfolding;
   renderer.render(scene, camera);
-  if (cameraMoving || activeJoy || closing || (moving && (lightProgress < 1 || letterAge < .66 || !snuffed || candleAge < 1.74))) requestDraw();
+  if (cameraMoving || activeJoy || closing || returnView || (moving && (lightProgress < 1 || letterAge < .66 || !snuffed || candleAge < 1.74))) requestDraw();
 }
 size();
 $('loading').hidden = true;
 showGuide();
+memory.restore(() => {
+  $('memory').hidden = false;
+  requestDraw();
+});

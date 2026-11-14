@@ -96,12 +96,45 @@ dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-s
 }
 .failed #letter span { display: block; font-size: .7rem; }
 
+.memory-caption {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: max(28px, calc(env(safe-area-inset-bottom) + 15px));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(90%, 450px);
+  padding: 10px 16px;
+  color: var(--ivory);
+  background: #23140fe8;
+  border: 1px solid var(--edge);
+  border-radius: 13px;
+  text-align: center;
+  font-size: .88rem;
+  pointer-events: none;
+}
+.memory-caption span { display: block; color: var(--muted); font-size: .76rem; margin-top: 4px; }
+.memory-caption[hidden] { display: none; }
+.memory-caption:not([hidden]) { animation: memory-in .36s ease both; }
+@keyframes memory-in { from { opacity: 0; } }
+.finale-action {
+  background: #783e35;
+  color: #fff2d8;
+  padding: 8px 15px;
+  border: 1px solid #783e35;
+  border-radius: 99px;
+  min-height: 44px;
+  margin-top: 10px;
+}
+.finale-action span { display: inline; margin-left: 5px; font-size: .79em; }
+.finale-action:hover { background: #653128; }
+.failed #memory, .failed #collect-memory, .failed #memory-caption { display: none; }
 dialog[open] { animation: unfold .24s ease-out both; }
 @keyframes unfold {
   from { opacity: 0; transform: translateY(12px) scale(.97); }
 }
 @media (prefers-reduced-motion: reduce) {
-  dialog[open], .discovery-mark { animation: none; }
+  dialog[open], .discovery-mark, .memory-caption:not([hidden]) { animation: none; }
   .explore-hint { transition: none; }
 }
 </style>
@@ -113,6 +146,7 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <p class="status" id="loading">正在布置生日桌… <span lang="en">Setting the table…</span></p>
 <div id="object-label" aria-hidden="true" hidden></div>
 <p id="notice" role="status"></p>
+<p id="memory-caption" class="memory-caption" role="status" hidden></p>
 <p class="explore-hint" id="explore-hint" aria-hidden="true" hidden>拖动看桌面，点一点桌上的物件<span lang="en">Drag to look around. Tap something on the table.</span></p>
 <div aria-label="生日桌操作 · Birthday table controls" role="group">
 <button class="object-action" type="button" id="view" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home">换个角度<span lang="en">Change view</span></button>
@@ -120,6 +154,7 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <button class="object-action" type="button" id="candle" aria-pressed="false">吹蜡烛<span lang="en">Blow candles</span></button>
 <button class="object-action" type="button" id="joy" aria-haspopup="dialog" aria-controls="joy-card">乐乐<span lang="en">Joy</span></button>
 <button class="object-action" type="button" id="pancit" aria-haspopup="dialog" aria-controls="pancit-card">菲律宾生日面<span lang="en">Pancit bihon</span></button>
+<button class="object-action" type="button" id="memory" aria-haspopup="dialog" aria-controls="memory-card" hidden>生日记忆球<span lang="en">Birthday memory orb</span></button>
 <button class="object-action" type="button" id="letter" aria-haspopup="dialog" aria-controls="card">打开贺卡<span lang="en">Open card</span></button>
 </div>
 </main>
@@ -135,14 +170,22 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <dialog id="joy-card" aria-labelledby="joy-title">
 <form method="dialog"><button class="close" type="submit" aria-label="关闭 · Close">×</button></form>
 <h2 id="joy-title">乐乐来给你过生日啦！<small lang="en">A note from Joy</small></h2>
-<p>琳琳，听说你也扮演过我！这次换我来给你庆生。祝你学得顺、睡得香、身体棒！遇到好消息，记得和朋友一起庆祝呀。</p>
-<p lang="en">I heard you dressed up as me once, Linlin! Now it’s my turn to celebrate you. I hope your studies go well, you sleep soundly, and you stay healthy. And when good news comes, remember to celebrate with friends!</p>
+<p>琳琳！听说你以前扮演过我？太棒了，这次轮到我来给你庆生！先吹蜡烛、吃口生日面，什么时候想把这一刻收起来，再来找我。</p>
+<p lang="en">Linlin! I heard you dressed up as me once. That’s amazing! Now it’s my turn to celebrate you. Make a wish, have some birthday noodles, and come find me whenever you’re ready to save this moment.</p>
+<button type="button" class="finale-action" id="collect-memory">把今天收藏起来<span lang="en">Save this memory</span></button>
 </dialog>
 <dialog id="pancit-card" aria-labelledby="pancit-title">
 <form method="dialog"><button class="close" type="submit" aria-label="关闭 · Close">×</button></form>
 <h2 id="pancit-title"><span lang="tl">Pancit bihon</span><small>菲律宾生日面 · <span lang="en">Filipino birthday noodles</span></small></h2>
 <p>菲律宾的生日聚会上常有一盘 pancit。长长的面条寄托着长寿的祝愿。这盘特意留给你，琳琳。愿你新的一岁健健康康，也愿我们的友谊长长久久。</p>
 <p lang="en">Pancit is often served at Filipino birthdays, where its long noodles are a wish for a long life. This plate is for you, Linlin. Wishing you good health and many more years of friendship.</p>
+</dialog>
+<dialog id="memory-card" aria-labelledby="memory-title">
+<form method="dialog"><button class="close" type="submit" aria-label="关闭 · Close">×</button></form>
+<h2 id="memory-title">11 月 14 日的记忆<small lang="en">A memory from November 14</small></h2>
+<p>琳琳，想念今天的时候，再来看看这颗球吧。愿你学业顺利、身体健康，也愿我们往后还有好多生日可以一起过。</p>
+<p lang="en">Linlin, whenever you want to revisit today, come back to this little orb. I wish you good health, all the best with your studies, and many more birthdays to celebrate together.</p>
+<button type="button" class="finale-action" id="replay-memory">重看闭幕<span lang="en">Replay the finale</span></button>
 </dialog>
 <script>
 const card = document.querySelector('#card');
@@ -159,7 +202,7 @@ window.showTableFallback = () => {
 };
 </script>
 <script type="module">
-import('./table.js?v=pancit').catch((error) => { console.error(error); window.showTableFallback(); });
+import('./table.js?v=memory').catch((error) => { console.error(error); window.showTableFallback(); });
 </script>
 </body>
 </html>

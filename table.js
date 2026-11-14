@@ -1,9 +1,6 @@
 import * as T from './vendor/three.module.js';
-import { createBirthdayMemory } from './memory.js?v=1';
-import { connectBirthdayMusic } from './music.js?v=1';
 
-const $ = (id) => document.getElementById(id);
-const stage = $('stage');
+export function createBirthdayScene(stage) {
 const scene = new T.Scene();
 scene.background = new T.Color('#312120');
 scene.fog = new T.FogExp2('#3d2b27', 0.027);
@@ -19,7 +16,6 @@ stage.append(renderer.domElement);
 
 const camera = new T.PerspectiveCamera(37, 1, 0.1, 65);
 const target = new T.Vector3(0, 1.35, 0.14);
-const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const scale = (x, y, z) => new T.Vector3(x, y, z);
 const item = (parent, geometry, material, x, y, z, shadow = true) => {
   const mesh = new T.Mesh(geometry, material);
@@ -256,101 +252,8 @@ for(const [x,z,h] of [[-.43,.06,.58],[.005,-.37,.78],[.43,.04,.61]]){
 }
 
 
-const lampHit=group(room,-3.48,tableHeight,-1.35);
-const enamel=mat('#526a59',.37);
-const bulbMat=new T.MeshStandardMaterial({color:'#ffe5ae',emissive:'#f7ac58',emissiveIntensity:1.8,roughness:.42});
-lathe(lampHit,enamel,0,0,0,[[0,0],[.63,0],[.7,.04],[.7,.11],[.66,.16],[.45,.21],[0,.21]]);
-lathe(lampHit,brass,0,0,0,[[.66,.054],[.706,.058],[.706,.074],[.66,.078]]);
-tube(lampHit,brass,[[0,.18,0],[0,.8,-.15],[-.18,1.7,-.4],[.08,2.54,-.40],[.58,2.79,-.20],[.95,2.64,0]],.075);
-const shade=group(lampHit,.95,2.40,.04);
-shade.rotation.z=.20;
-shade.rotation.x=-.10;
-const switchPivot = group(lampHit, -.32, .17, .36);
-round(switchPivot, brass, 0, 0, 0, .10, .044, .10);
-const toggle = group(switchPivot, 0, .035, 0);
-cylinder(toggle, brass, 0, .045, 0, .024, .033, .09, 16);
-round(toggle, brass, 0, .097, 0, .034, .035, .034);
-
-const inner=enamel.clone();inner.side=T.DoubleSide;
-lathe(shade,inner,0,0,0,[[.67,0],[.69,.04],[.64,.16],[.56,.25],[.40,.38],[.25,.44],[.14,.55],[.11,.64],[0,.65]]);
-lathe(shade,brass,0,0,0,[[.682,-.01],[.708,.016],[.702,.049],[.677,.072]]);
-round(shade,bulbMat,0,-.015,0,.17,.17,.17);
-const lampKey=new T.SpotLight('#ffd298',34,13,Math.PI*.32,.64,1.6);
-lampKey.position.set(-2.55,3.40,-1.22);lampKey.target.position.set(.15,1.05,.8);
-scene.add(lampKey,lampKey.target);
-
-const letterHit=group(room,-2.68,tableHeight+.012,1.27);
-letterHit.rotation.y=.29;
-const envelopeMap=texture(512,(ctx,s)=>{
-  const gradient=ctx.createLinearGradient(0,0,s,s);
-  gradient.addColorStop(0,'#e8bf86');gradient.addColorStop(1,'#f4d6a7');
-  ctx.fillStyle=gradient;ctx.fillRect(0,0,s,s);
-  const rand=random(1411);
-  for(let i=0;i<3600;i++){
-    ctx.fillStyle=i%2?'#fff5dc28':'#95644215';
-    ctx.fillRect(rand()*s,rand()*s,1+rand()*2,1);
-  }
-  const polygon=(points, fill)=>{
-    ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x*s,y*s):ctx.moveTo(x*s,y*s));
-    ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle='#9e6b486e';ctx.lineWidth=2;ctx.stroke();
-  };
-  polygon([[0,0],[.5,.57],[0,1]],'#eac18d');
-  polygon([[1,0],[.5,.57],[1,1]],'#e7bb83');
-
-  ctx.textAlign='center';ctx.fillStyle='#7d4841';ctx.font='italic 73px Georgia';ctx.fillText('Linlin',s*.5,s*.85);
-});
-const envelopeTop=mat('#ffffff',.92);envelopeTop.map=envelopeMap;
-const envelopeEdge=mat('#d9ad77',.91);
-box(letterHit,[envelopeEdge,envelopeEdge,envelopeTop,envelopeEdge,envelopeEdge,envelopeEdge],0,.06,0,1.85,.12,1.26);
-const seal=mat('#a94954',.45);
-const sealSoft=mat('#cf716c',.58);
-const waxSeal = cylinder(letterHit,seal,0,.145,.073,.107,.125,.057);
-const heart= new T.Shape();
-heart.moveTo(0,-.049);heart.bezierCurveTo(-.136,.041,-.047,.106,0,.053);
-heart.bezierCurveTo(.047,.106,.136,.041,0,-.049);
-const stamp=item(letterHit,new T.ShapeGeometry(heart),sealSoft,0,.177,.073,false);stamp.rotation.x=-Math.PI/2;
-
-// The flap pivots on the back seam and reveals the card beneath it.
-const flapPivot = group(letterHit, 0, .128, -.626);
-const flapShape = new T.Shape();
-flapShape.moveTo(-.92, 0);
-flapShape.lineTo(.92, 0);
-flapShape.lineTo(0, -.765);
-flapShape.closePath();
-const flapPaper = mat('#f8deb3', .95);
-flapPaper.side = T.DoubleSide;
-const flap = item(flapPivot, new T.ShapeGeometry(flapShape), flapPaper, 0, 0, 0);
-flap.rotation.x = -Math.PI / 2;
-const sealGroup = group(flapPivot, 0, 0, .699);
-sealGroup.add(stamp, waxSeal);
-stamp.position.z = waxSeal.position.z = 0;
-stamp.position.y -= .128;
-waxSeal.position.y -= .128;
-
-const greeting = group(letterHit, 0, .135, 0);
-const cardFace = texture(512, (ctx, size) => {
-  ctx.fillStyle = '#fff1d6';
-  ctx.fillRect(0, 0, size, size);
-  ctx.strokeStyle = '#ac6c5f';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(18, 18, size - 36, size - 36);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#8a434b';
-  ctx.font = 'italic 69px Georgia';
-  ctx.fillText('For Linlin', size / 2, 249);
-  ctx.font = '42px Georgia';
-  ctx.fillText('11 · 14', size / 2, 319);
-});
-const greetingPaper = mat('#ffffff', .95);
-greetingPaper.map = cardFace;
-const paperEdge = mat('#e8c99a', .9);
-box(greeting, [paperEdge,paperEdge,greetingPaper,paperEdge,paperEdge,paperEdge], 0, 0, 0, 1.53, .032, .94);
-greeting.visible = false;
-
-const joyHit=group(room,3.45,tableHeight,-.16);
+const joyHit=group(room,2.55,tableHeight + .07,-.54);
 const toy=group(joyHit,0,.16,0);toy.rotation.y=-.11;
-lathe(joyHit,brass,0,0,0,[[0,0],[.53,0],[.59,.035],[.61,.074],[.60,.117],[.54,.144],[0,.144]]);
-lathe(joyHit,mat('#755240',.54),0,0,0,[[0,.142],[.50,.142],[.53,.148],[.50,.169],[0,.169]]);
 const skin=mat('#f0bc49',.56);
 const shoe=mat('#d7a53c',.52);
 const hair=mat('#207ab3',.36);
@@ -411,121 +314,12 @@ const teeth=new T.Shape();
 teeth.moveTo(-.108,-.104);teeth.quadraticCurveTo(0,-.132,.102,-.093);
 teeth.quadraticCurveTo(.05,-.165,-.052,-.145);teeth.quadraticCurveTo(-.09,-.14,-.108,-.104);
 item(head,new T.ShapeGeometry(teeth),whites,0,0,.298,false);
-const joyRing=group(joyHit,0,1.46,0);
-const starShape=new T.Shape();
-for(let i=0;i<8;i++){
-  const a=i*Math.PI/4, r=i%2?.039:.12;
-  const x=Math.cos(a)*r,y=Math.sin(a)*r;
-  i===0?starShape.moveTo(x,y):starShape.lineTo(x,y);
-}
-starShape.closePath();
-const starMaterial=new T.MeshStandardMaterial({color:'#ffe08d',emissive:'#ffb950',emissiveIntensity:.8,side:T.DoubleSide});
-for(const [x,y,z] of [[.6,.53,.08],[-.50,.28,.14],[.53,.02,.23],[-.49,-.25,0]]){
-  item(joyRing,new T.ShapeGeometry(starShape),starMaterial,x,y,z,false).rotation.z=.12;
-}
-joyRing.visible=false;
-
-// Pancit bihon and calamansi, served on a glazed oval platter.
-const pancitHit = group(room, 2.80, tableHeight + .04, 2.05);
-pancitHit.rotation.y = -.24;
-const ceramic = mat('#eedfc2', .37);
-const rim = mat('#537b71', .41);
-const platter = lathe(pancitHit, ceramic, 0, 0, 0,
-  [[0,.018],[.59,.018],[.81,.042],[.92,.091],[.99,.155],[.96,.194],[.90,.170],[.80,.118],[0,.118]]);
-platter.scale.z = .69;
-const plateRim = lathe(pancitHit, rim, 0, 0, 0, [[.927,.181],[.953,.190],[.973,.182],[.986,.169]]);
-plateRim.scale.z = .69;
-
-const noodleRandom = random(2468);
-const noodleColors = ['#a16c39', '#bf8746', '#d8a15d', '#e0b475'].map((color) => mat(color, .60));
-const stock = mat('#ac7541', .66);
-round(pancitHit, stock, -.089, .184, -.035, .73, .112, .37);
-for (let i = 0; i < 33; i++) {
-  const depth = (noodleRandom() - .50) * .72;
-  const length = .62 + noodleRandom() * .80;
-  const phase = noodleRandom() * Math.PI * 2;
-  const variation = .05 + noodleRandom() * .077;
-  const xOffset = -.082 + (noodleRandom() - .50) * .15;
-  const points = Array.from({length: 17}, (_, n) => {
-    const t = n / 16;
-    const x = (t - .5) * length + xOffset;
-    const z = depth + Math.sin(t * 8 + phase) * variation;
-    const arch = Math.max(0, 1 - (x / .86) ** 2 - (z / .61) ** 2);
-    const y = .156 + Math.sqrt(arch) * (.125 + noodleRandom() * .048);
-    return [x, y, z];
-  });
-  tube(pancitHit, noodleColors[i % noodleColors.length], points, .009 + noodleRandom() * .004).castShadow = false;
-}
-const carrot = mat('#d47843', .59);
-const cabbage = mat('#a5ae57', .68);
-const scallion = mat('#50774a', .65);
-for (let i = 0; i < 28; i++) {
-  const angle = noodleRandom() * Math.PI * 2;
-  const reach = .24 + .70 * Math.sqrt(noodleRandom());
-  const x = -.085 + Math.cos(angle) * reach * .67;
-  const z = -.04 + Math.sin(angle) * reach * .35;
-  const y = .19 + .14 * Math.sqrt(1 - reach ** 2);
-  const garnish = box(pancitHit, [carrot, cabbage, scallion][i % 3],
-    x, y, z, .09 + noodleRandom() * .12, .015, i % 3 === 1 ? .052 : .024, false);
-  garnish.rotation.set(.10, angle, .12);
-}
-const citrusRind = mat('#719545', .58);
-const citrusPith = mat('#f1d98a', .71);
-const citrusFlesh = mat('#e8ad43', .49);
-for (const [x, z, tilt] of [[.59,.265,.26],[.36,.414,-.23]]) {
-  const lime = group(pancitHit, x, .185, z);
-  lime.rotation.set(tilt, .2, -.20);
-  lathe(lime, citrusRind, 0, 0, 0, [[0,0],[.105,.019],[.143,.079],[.148,.125],[0,.124]]);
-  cylinder(lime, citrusPith, 0, .127, 0, .140, .140, .010, 32);
-  for (let segment = 0; segment < 8; segment++) {
-    const angle = segment * Math.PI / 4;
-    const wedge = round(lime, citrusFlesh, .057 * Math.cos(angle), .136,
-      .057 * Math.sin(angle), .061, .010, .022);
-    wedge.rotation.y = -angle;
-  }
-}
-
-// A walnut music box with a moving brass cylinder and a gold winding key.
-const musicHit = group(room, -3.21, tableHeight, -.01);
-musicHit.rotation.y = .20;
-const boxWood = mat('#6b3e3f', .44);
-const insetWood = mat('#512b36', .67);
-box(musicHit, boxWood, 0, .185, 0, 1.25, .36, .81);
-box(musicHit, brass, 0, .055, 0, 1.32, .035, .86);
-box(musicHit, brass, 0, .335, 0, 1.28, .035, .84);
-box(musicHit, insetWood, 0, .355, 0, 1.12, .025, .69);
-const lid = group(musicHit, 0, .35, -.40);
-lid.rotation.x = -.82;
-box(lid, boxWood, 0, .04, .405, 1.26, .10, .83);
-box(lid, brass, 0, -.016, .398, 1.10, .016, .67);
-box(lid, insetWood, 0, -.03, .398, 1.01, .014, .59);
-const cylinderReel = group(musicHit, -.18, .43, .035);
-rod(cylinderReel, brass, [-.31,0,0], [.31,0,0], .092, 32);
-for (let i = 0; i < 6; i++) {
-  const ring = item(cylinderReel, new T.TorusGeometry(.093, .008, 8, 24), brass, i * .1 - .25, 0, 0, false);
-  ring.rotation.y = Math.PI / 2;
-  round(cylinderReel, brass, i * .10 - .25, Math.cos(i) * .095, Math.sin(i) * .095, .019, .022, .021);
-}
-const windingKey = group(musicHit, .14, .204, .431);
-rod(windingKey, brass, [0,0,0], [0,0,.091], .023);
-for (const x of [-.057, .057]) {
-  item(windingKey, new T.TorusGeometry(.049, .015, 9, 24), brass, x, 0, .087);
-}
-const indicator = new T.MeshStandardMaterial({
-  color: '#c38c4b', emissive: '#ffad3d', emissiveIntensity: 0, roughness: .48
-});
-round(musicHit, indicator, -.41, .217, .411, .034, .034, .018);
-const music = connectBirthdayMusic($('birthday-audio'), $('music'), (playing) => {
-  indicator.emissiveIntensity = playing ? 1.8 : 0;
-  requestDraw();
-});
-
 const partyColors=['#e1877a','#ead088','#8ca992','#ecc7b1'];
 const paperMats=partyColors.map((c)=>mat(c,.89));
 const pareRng=random(203);
 for(let i=0;i<72;i++){
   const x=(pareRng()-.5)*9.6, z=(pareRng()-.5)*5.7;
-  if (Math.hypot(x - .23, z - .14) < 1.75 || Math.hypot(x - 2.80, z - 2.05) < 1.05) continue;
+  if (Math.hypot(x - .23, z - .14) < 1.75) continue;
   const height=.023+pareRng()*.009;
   const paper=box(room,paperMats[i%4],x,tableHeight+height,z,.036+pareRng()*.05,.006,.064+pareRng()*.06,false);
   paper.rotation.y=pareRng()*Math.PI;
@@ -542,595 +336,273 @@ scene.add(key);
 const fill=new T.DirectionalLight('#cdd5f7',1.18);
 fill.position.set(6,4,1.5);scene.add(fill);
 
-const memory = createBirthdayMemory(room, tableHeight, cakeHit, joyHit, wavingArm);
-const actions = new Map([
-  [memory.pedestal, { id: 'memory', height: 1.10, radius: .57 }],
-  [cakeHit, { id: 'candle', height: 2.83, radius: 1.87 }],
-  [joyHit, { id: 'joy', height: 2.39, radius: .72 }],
-  [letterHit, { id: 'letter', height: .22, radius: 1.02 }],
-  [lampHit, { id: 'lamp', height: 3.13, radius: .82 }],
-  [musicHit, { id: 'music', height: .92, radius: .76 }],
-  [pancitHit, { id: 'pancit', height: .34, radius: 1.03 }]
-]);
-const objects = [...actions.keys()];
+
+// Particle positions sampled from Joy's actual meshes in her arrival pose.
+const joyCenter = new T.Vector3(0, 1.13, 0);
+const particleCount = 1450;
+const arrivals = new Float32Array(particleCount * 3);
+const starts = new Float32Array(arrivals.length);
+const positions = new Float32Array(arrivals.length);
+const mistGeometry = new T.BufferGeometry();
+mistGeometry.setAttribute('position', new T.BufferAttribute(positions, 3));
+const mistBrush = texture(64, (ctx) => {
+  const radial = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  radial.addColorStop(0, '#fff8dc');
+  radial.addColorStop(.25, '#ffdb8dbc');
+  radial.addColorStop(1, '#ffb15400');
+  ctx.fillStyle = radial;
+  ctx.fillRect(0, 0, 64, 64);
+});
+const joyMistMat = new T.PointsMaterial({ map: mistBrush, color: '#ffda99', size: .075,
+  transparent: true, depthWrite: false, blending: T.AdditiveBlending });
+const joyMist = new T.Points(mistGeometry, joyMistMat);
+joyMist.frustumCulled = false;
+joyHit.add(joyMist);
+const randomMist = random(814);
+const samples = [];
+const sample = new T.Vector3();
+toy.updateWorldMatrix(true, true);
+toy.traverse((mesh) => {
+  if (!mesh.isMesh) return;
+  const vertices = mesh.geometry.getAttribute('position');
+  for (let i = 0; i < vertices.count; i += 3) {
+    sample.fromBufferAttribute(vertices, i);
+    mesh.localToWorld(sample);
+    joyHit.worldToLocal(sample);
+    samples.push(sample.clone());
+  }
+});
+for (let i = 0; i < particleCount; i++) {
+  samples[Math.floor(randomMist() * samples.length)].toArray(arrivals, i * 3);
+  const angle = randomMist() * Math.PI * 2;
+  const spread = .75 + randomMist() * 2.3;
+  starts.set([spread * Math.cos(angle), .2 + randomMist() * 3, spread * Math.sin(angle)], i * 3);
+}
+
+const joyMaterials = new Set();
+const dissolve = {value: 0};
+toy.traverse((mesh) => {
+  if (!mesh.isMesh || joyMaterials.has(mesh.material)) return;
+  const material = mesh.material;
+  joyMaterials.add(material);
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.joyReveal = dissolve;
+    shader.fragmentShader = 'uniform float joyReveal;\n' + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', [
+      '#include <alphatest_fragment>',
+      'float grain = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);',
+      'if (grain >= joyReveal && joyReveal < 1.0) discard;'
+    ].join('\n'));
+  };
+});
+const joyLight = new T.PointLight('#ffc369', 0, 6, 2);
+joyLight.position.set(2.05, 2.79, 2.1);
+scene.add(joyLight);
+
+const memoryRoom = new T.Scene();
+memoryRoom.background = new T.Color('#170c11');
+const orbCamera = new T.PerspectiveCamera(35, 1, .1, 25);
+orbCamera.position.z = 6.8;
+const orb = new T.Group();
+memoryRoom.add(orb);
+const orbSurface = new T.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  vertexShader: [
+    'varying vec3 sphereNormal;',
+    'varying vec3 eye;',
+    'void main() {',
+    '  vec4 p = modelViewMatrix * vec4(position, 1.);',
+    '  sphereNormal = normalize(normalMatrix * normal);',
+    '  eye = normalize(-p.xyz);',
+    '  gl_Position = projectionMatrix * p;',
+    '}'
+  ].join('\n'),
+  fragmentShader: [
+    'varying vec3 sphereNormal;',
+    'varying vec3 eye;',
+    'void main() {',
+    '  vec3 n = normalize(sphereNormal);',
+    '  float rim = pow(1. - max(0., dot(normalize(eye), n)), 2.2);',
+    '  float upper = pow(max(0., dot(n, normalize(vec3(-.45,.55,.75)))), 19.);',
+    '  vec3 color = mix(vec3(.62,.19,.028), vec3(1.,.74,.34), rim);',
+    '  gl_FragColor = vec4(mix(color, vec3(1.,.94,.76), upper), min(.99,.12+rim*.89+upper*.81));',
+    '  #include <colorspace_fragment>',
+    '}'
+  ].join('\n')
+});
+const shell = new T.Mesh(sphere, orbSurface);
+shell.renderOrder = 3;
+orb.add(shell);
+const memoryCanvas = document.createElement('canvas');
+memoryCanvas.width = memoryCanvas.height = 384;
+const memoryImage = new T.CanvasTexture(memoryCanvas);
+memoryImage.colorSpace = T.SRGBColorSpace;
+const memoryPortrait = new T.Sprite(new T.SpriteMaterial({map: memoryImage, depthWrite: false}));
+memoryPortrait.scale.set(1.94, 1.94, 1);
+memoryPortrait.renderOrder = 2;
+orb.add(memoryPortrait);
+const orbHalo = new T.Sprite(new T.SpriteMaterial({map: mistBrush, color: '#ffa342', transparent: true,
+  opacity: .43, depthWrite: false, blending: T.AdditiveBlending}));
+orbHalo.scale.set(3.75, 3.75, 1);
+orbHalo.renderOrder = 1;
+orb.add(orbHalo);
+
+const smooth = (start, end, seconds) => T.MathUtils.smoothstep(seconds, start, end);
+const clamp = T.MathUtils.clamp;
+const baseFocus = new T.Vector3();
+const joyFocus = new T.Vector3(1.22, 1.93, -.02);
+const flameWorld = new T.Vector3();
 const ray = new T.Raycaster();
-const coord = new T.Vector2();
-const projection = new T.Vector3();
-const origin = new T.Vector3();
-const label = $('object-label');
-const hint = $('explore-hint');
-const keyboardControls = document.querySelectorAll('.object-action');
-const marks = new Map(objects.map((object, index) => {
-  const mark = document.createElement('i');
-  mark.className = 'discovery-mark';
-  mark.setAttribute('aria-hidden', 'true');
-  mark.style.animationDelay = -index * .33 + 's';
-  stage.after(mark);
-  return [object, mark];
-}));
-let exploring = false;
-let guideTimer;
-function showGuide() {
-  exploring = true;
-  hint.hidden = false;
-  hint.classList.remove('dismissed');
-  clearTimeout(guideTimer);
-  guideTimer = setTimeout(hideGuide, 6400);
-  requestDraw();
-}
-function hideGuide() {
-  if (!exploring) return;
-  exploring = false;
-  clearTimeout(guideTimer);
-  hint.classList.add('dismissed');
-  for (const mark of marks.values()) mark.hidden = true;
-}
-const labels = {
-  view: ['方向键转动，回车切换视角', 'Arrow keys to orbit. Enter to switch views.'],
-  candle: ['吹蜡烛', 'Blow out the candles'],
-  relight: ['重新点亮', 'Relight the candles'],
-  joy: ['跟乐乐打招呼', 'Say hi to Joy'],
-  letter: ['拆开信封', 'Open the envelope'],
-  memory: ['看看今天的记忆球', 'Revisit the birthday memory'],
-  pancit: ['看看这盘生日面', 'Discover the birthday noodles'],
-  music: ['播放生日歌', 'Play the birthday song'],
-  pauseMusic: ['暂停生日歌', 'Pause the birthday song'],
-  lamp: ['切到烛光', 'Switch to candlelight'],
-  brighten: ['打开房间灯光', 'Brighten the room']
-};
-const highlight = item(room, new T.RingGeometry(.9, 1, 64),
-  new T.MeshBasicMaterial({color: '#ffc780', transparent: true, opacity: .36, depthWrite: false, side: T.DoubleSide}),
-  0, tableHeight + .035, 0, false);
-highlight.rotation.x = -Math.PI / 2;
-highlight.visible = false;
-const smoke = flames.map((flame) => {
-  const cloud = group(flame.parent, 0, flame.position.y, 0);
-  const vapor = new T.MeshBasicMaterial({color: '#e8d9d3', transparent: true, opacity: 0, depthWrite: false});
-  round(cloud, vapor, 0, 0, 0, .08, .14, .08).castShadow = false;
-  cloud.visible = false;
-  return {cloud, vapor};
-});
+const ndc = new T.Vector2();
+let size = {width: 1, height: 1};
+let azimuth = .03;
+let elevation = .57;
+let shownAzimuth = azimuth;
+let shownElevation = elevation;
+let zoom = 1;
+let shownZoom = 1;
+let snapshot = false;
 
-let azimuth = .03, elevation = .57, shownAzimuth = azimuth, shownElevation = elevation;
-let distance = 12, zoom = 1, shownZoom = 1, portrait = false;
-let dim = false, dimMix = 0, dimBegin = -Infinity, dimFrom = 0;
-let snuffed = false, candleStart = -Infinity, joyStart = -Infinity, letterStart = -Infinity;
-let frame = 0, gesture = null, hovered = null, hoverPoint = null, nextAngle = 0;
-let hoverDirty = false;
-let keyboardObject = null;
-let keyboardView = false;
-const touches = new Map();
-let pinch = null;
-let pendingDialog = null;
-let letterClose = -Infinity;
-const orbitSteps = [[.03,.57],[-.35,.45],[.32,.83]];
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const easeOut = (value) => 1 - (1 - clamp(value, 0, 1)) ** 3;
-const interpolate = (a, b, t) => a + (b - a) * t;
-
-const mouseOffsets = [[0, 0]];
-const touchOffsets = [[0, 0], [10, 0], [-10, 0], [0, 10], [0, -10]];
-function hit(x, y, finger = false) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  const offsets = finger ? touchOffsets : mouseOffsets;
-  for (const [dx, dy] of offsets) {
-    coord.set(((x + dx - rect.left) / rect.width) * 2 - 1, -((y + dy - rect.top) / rect.height) * 2 + 1);
-    ray.setFromCamera(coord, camera);
-    for (const {object} of ray.intersectObjects(objects, true)) {
-      let node = object;
-      while (node?.visible && !actions.has(node)) node = node.parent;
-      if (actions.has(node) && node.visible && (node !== memory.pedestal || memory.collected)) return node;
-    }
-  }
-  return null;
-}
-function setActionLabel(labelId) {
-  if (label.dataset.action === labelId) return;
-  const [zh, en] = labels[labelId];
-  const english = document.createElement('span');
-  english.lang = 'en';
-  english.textContent = en;
-  label.replaceChildren(zh, english);
-  label.dataset.action = labelId;
-}
-function projectObject(object, height) {
-  origin.set(0, height, 0);
-  projection.copy(object.localToWorld(origin)).project(camera);
-  return [(projection.x + 1) * stage.clientWidth / 2, (1 - projection.y) * stage.clientHeight / 2];
-}
-function updateHover() {
-  const object = keyboardObject || hovered;
-  label.toggleAttribute('data-keyboard', !!keyboardObject || keyboardView);
-  if (keyboardView) {
-    setActionLabel('view');
-    label.style.left = '50%';
-    label.style.top = Math.max(94, stage.clientHeight - 22) + 'px';
-    label.hidden = false;
-    highlight.visible = false;
-    return;
-  }
-  if (!object) {
-    label.hidden = true;
-    highlight.visible = false;
-    return;
-  }
-  const {id, height, radius} = actions.get(object);
-  const labelId = id === 'music' && music.playing ? 'pauseMusic' : id === 'lamp' && dim ? 'brighten' : id === 'candle' && snuffed ? 'relight' : id;
-  setActionLabel(labelId);
-  const [x, y] = projectObject(object, height);
-  label.style.left = clamp(x, 85, stage.clientWidth - 85) + 'px';
-  label.style.top = clamp(y - 9, 94, stage.clientHeight - 26) + 'px';
-  label.hidden = false;
-  highlight.position.x = object.position.x;
-  highlight.position.z = object.position.z;
-  const oval = id === 'letter' || id === 'pancit';
-  highlight.scale.set(radius, radius * (oval ? .73 : 1), 1);
-  highlight.rotation.z = oval ? object.rotation.y : 0;
-  highlight.visible = true;
-}
-function updateDiscoveryMarks() {
-  if (!exploring) return;
-  for (const [object, mark] of marks) {
-    const {height} = actions.get(object);
-    const [x, y] = projectObject(object, height);
-    mark.hidden = (object === memory.pedestal && !memory.collected) || object === hovered || x < 12 || x > stage.clientWidth - 12 || y < 85 || y > stage.clientHeight - 20;
-    if (!mark.hidden) {
-      mark.style.left = x + 'px';
-      mark.style.top = (y - 10) + 'px';
-    }
-  }
-}
-function clearHover() {
-  hoverPoint = null;
-  hovered = null;
-  stage.style.cursor = '';
-  requestDraw();
-}
-function size() {
-  const {width, height} = stage.getBoundingClientRect();
-  if (width < 1 || height < 1) return;
-  camera.aspect = width / height;
-  portrait = camera.aspect < .9;
-  camera.fov = portrait ? 44 : 36;
-  distance = portrait ? Math.min(29, Math.max(13.2, 10.8 / camera.aspect)) : 12.4;
-  normalFocus.set(0, portrait ? 1.57 : 1.53, portrait ? .07 : .17);
-  if (!returnView) target.copy(normalFocus);
+function resize(width, height) {
+  size = {width, height};
+  camera.aspect = orbCamera.aspect = width / height;
+  camera.fov = camera.aspect < .9 ? 44 : 36;
   camera.updateProjectionMatrix();
+  orbCamera.position.z = Math.max(6.8, 4.65 / orbCamera.aspect);
+  orbCamera.updateProjectionMatrix();
   renderer.setSize(width, height, false);
-  hoverDirty = true;
-  requestDraw();
 }
-new ResizeObserver(size).observe(stage);
-
-let noticeTimer;
-function message(copy) {
-  $('notice').textContent = copy;
-  clearTimeout(noticeTimer);
-  noticeTimer = setTimeout(() => $('notice').textContent = '', 4100);
-}
-for (const button of keyboardControls) {
-  button.addEventListener('focus', () => {
-    if (!button.matches(':focus-visible')) return;
-    hideGuide();
-    clearHover();
-    keyboardView = button.id === 'view';
-    keyboardObject = objects.find((object) => actions.get(object).id === button.id) || null;
-    requestDraw();
-  });
-  button.addEventListener('blur', () => {
-    keyboardObject = null;
-    keyboardView = false;
-    requestDraw();
-  });
-}
-$('view').addEventListener('keydown', (event) => {
-  const offsets = {ArrowLeft: [.10, 0], ArrowRight: [-.10, 0], ArrowUp: [0, .09], ArrowDown: [0, -.09]};
-  if (event.key === 'Home') {
-    [azimuth, elevation] = orbitSteps[0];
-    nextAngle = 0;
-    zoom = 1;
-  } else if (Object.hasOwn(offsets, event.key)) {
-    const [yaw, pitch] = offsets[event.key];
-    azimuth = clamp(azimuth + yaw, -.61, .61);
-    elevation = clamp(elevation + pitch, .27, 1.07);
-  } else return;
-  event.preventDefault();
-  requestDraw();
-});
-$('view').addEventListener('click', () => {
-  nextAngle = (nextAngle + 1) % orbitSteps.length;
-  [azimuth, elevation] = orbitSteps[nextAngle];
-  zoom = 1;
-  requestDraw();
-});
-$('lamp').addEventListener('click', () => {
-  dim = !dim;
-  dimBegin = performance.now();
-  dimFrom = dimMix;
-  $('lamp').setAttribute('aria-pressed', String(dim));
-  message(dim ? '烛光模式 · Candlelight' : '房间灯光 · Room light');
-  requestDraw();
-});
-const rng = random(1114);
-const particles = Array.from({length: 54}, (_, i) => {
-  const mesh = box(room, paperMats[i % 4], 0, 0, 0, .069, .018, .137, false);
-  mesh.visible = false;
-  const angle = rng() * Math.PI * 2, speed = .7 + rng() * 2.6;
-  return {mesh, dx: Math.cos(angle) * speed, dz: Math.sin(angle) * speed, dy: 1.5 + rng() * 3, spin: .8 + rng() * 7};
-});
-function setCandleLabel(out) {
-  const button = $('candle');
-  button.firstChild.textContent = out ? '重新点亮' : '吹蜡烛';
-  button.lastElementChild.textContent = out ? 'Relight' : 'Blow candles';
-  button.setAttribute('aria-pressed', String(out));
-}
-$('candle').addEventListener('click', () => {
-  snuffed = !snuffed;
-  candleStart = performance.now();
-  setCandleLabel(snuffed);
-  if (snuffed) message('许个愿吧，琳琳。 · Make a wish, Linlin.');
-  else {
-    clearTimeout(noticeTimer);
-    $('notice').textContent = '';
-  }
-  requestDraw();
-});
-function openWithMotion(dialogId, triggerId, duration) {
-  if (pendingDialog || document.querySelector('dialog[open]')) return;
-  clearHover();
-  const button = $(triggerId);
-  const dialog = $(dialogId);
-  if (motion.matches) {
-    dialog.showModal();
-    return;
-  }
-  button.setAttribute('aria-busy', 'true');
-  pendingDialog = setTimeout(() => {
-    pendingDialog = null;
-    button.removeAttribute('aria-busy');
-    if (!document.querySelector('dialog[open]')) dialog.showModal();
-  }, duration);
-  if (triggerId === 'joy') joyStart = performance.now();
-  else {
-    letterStart = performance.now();
-    letterClose = -Infinity;
-  }
-  requestDraw();
-}
-$('pancit').addEventListener('click', () => {
-  if (pendingDialog || document.querySelector('dialog[open]')) return;
-  clearHover();
-  $('pancit-card').showModal();
-});
-$('joy').addEventListener('click', () => {
-  if (memory.phase === 'playing') return;
-  if (memory.collected) $('memory').click();
-  else openWithMotion('joy-card', 'joy', 1050);
-});
-$('memory').addEventListener('click', () => {
-  if (memory.phase === 'saved' && !document.querySelector('dialog[open]')) {
-    clearHover();
-    $('memory-card').showModal();
-  }
-});
-$('letter').addEventListener('click', () => {
-  if (!stage.closest('.failed')) openWithMotion('card', 'letter', 650);
-});
-$('card').addEventListener('close', () => {
-  letterClose = performance.now();
-  requestDraw();
-});
-
-const caption = $('memory-caption');
-let captionTimer;
-let finaleSince = 0;
-let finaleStage = -1;
-let returnView = null;
-const normalFocus = new T.Vector3();
-const finalFocus = new T.Vector3(memory.orbit.x, memory.orbit.y, memory.orbit.z);
-const captions = [
-  ['等一下，今天有好多值得留下来的瞬间！', 'Wait! There’s so much from today I want to keep!'],
-  ['看，烛光、生日面，还有我们一起笑的这一刻。', 'Look! The candles, the birthday noodles, and this moment we shared.'],
-  ['接住啦！这颗给你，琳琳。', 'Got it! This one is yours, Linlin.'],
-  ['今天的记忆收好了。点亮着的球，可以再看一眼。', 'Today’s memory is safe. Tap the glowing orb to revisit it.']
-];
-function finaleCaption(step) {
-  if (finaleStage === step) return;
-  finaleStage = step;
-  const [zh, en] = captions[step];
-  const english = document.createElement('span');
-  english.lang = 'en';
-  english.textContent = en;
-  caption.replaceChildren(zh, english);
-  caption.hidden = false;
-}
-function playFinale() {
-  if (memory.phase === 'playing') return;
-  const dialog = document.querySelector('dialog[open]');
-  if (dialog) dialog.close();
-  hideGuide();
-  clearHover();
-  clearTimeout(captionTimer);
-  keyboardObject = null;
-  keyboardView = false;
-  gesture = null;
-  touches.clear();
-  pinch = null;
-  stage.classList.remove('dragging');
-  clearTimeout(noticeTimer);
-  $('notice').textContent = '';
-  finaleSince = performance.now();
-  finaleStage = -1;
-  finaleCaption(0);
-  returnView = {azimuth, elevation, zoom};
-  // Draw immediately before capturing: the WebGL drawing buffer may be cleared between frames.
-  if (!memory.collected) renderer.render(scene, camera);
-  memory.start(finaleSince, renderer.domElement, motion.matches);
-  $('memory').hidden = true;
-  for (const control of keyboardControls) control.disabled = true;
-  requestDraw();
-}
-$('collect-memory').addEventListener('click', playFinale);
-$('replay-memory').addEventListener('click', playFinale);
-
-function finishFinale() {
-  for (const control of keyboardControls) control.disabled = false;
-  $('memory').hidden = false;
-  azimuth = returnView.azimuth;
-  elevation = returnView.elevation;
-  zoom = returnView.zoom;
-  returnView = null;
-  finaleCaption(3);
-  if (document.activeElement === document.body) {
-    $('memory').focus({preventScroll: true});
-    if (!$('memory').matches(':focus-visible')) $('memory').blur();
-  }
-  captionTimer = setTimeout(() => { caption.hidden = true; }, 6900);
-}
-function fingerDistance() {
-  const [a, b] = touches.values();
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-function beginGesture(event, tap) {
-  const {pointerId: id, clientX: x, clientY: y, pointerType} = event;
-  gesture = {id, x, y, azimuth: shownAzimuth, elevation: shownElevation,
-    action: tap ? hit(x, y, pointerType === 'touch') : null, drag: false};
-}
-stage.addEventListener('pointerdown', (event) => {
-  if (event.button !== 0 || memory.phase === 'playing') return;
-  if (event.pointerType === 'touch') {
-    if (touches.size === 2) return;
-    touches.set(event.pointerId, {x: event.clientX, y: event.clientY});
-    if (touches.size === 2) {
-      gesture = null;
-      pinch = {distance: Math.max(1, fingerDistance()), zoom: shownZoom};
-      stage.setPointerCapture(event.pointerId);
-      hideGuide();
-      clearHover();
-      return;
-    }
-  } else if (gesture || pinch) return;
-  if (document.activeElement?.matches('.object-action')) document.activeElement.blur();
-  beginGesture(event, true);
-  stage.setPointerCapture(event.pointerId);
-});
-stage.addEventListener('pointermove', (event) => {
-  if (touches.has(event.pointerId)) {
-    touches.set(event.pointerId, {x: event.clientX, y: event.clientY});
-    if (pinch) {
-      zoom = clamp(pinch.zoom * pinch.distance / Math.max(1, fingerDistance()), portrait ? .86 : .76, 1.2);
-      requestDraw();
-      return;
-    }
-  }
-  if (!gesture) {
-    if (event.pointerType === 'mouse') {
-      hoverPoint = [event.clientX, event.clientY];
-      hoverDirty = true;
-      requestDraw();
-    }
-    return;
-  }
-  if (event.pointerId !== gesture.id) return;
-  const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
-  if (!gesture.drag && Math.hypot(dx, dy) < 7) return;
-  gesture.drag = true;
-  hideGuide();
-  if (hovered || hoverPoint) clearHover();
-  stage.classList.add('dragging');
-  azimuth = clamp(gesture.azimuth - dx * .0045, -.61, .61);
-  elevation = clamp(gesture.elevation + dy * .004, .27, 1.07);
-  requestDraw();
-});
-function release(event, click) {
-  touches.delete(event.pointerId);
-  if (pinch) {
-    if (touches.size > 1) return;
-    pinch = null;
-    if (touches.size) {
-      const [id, {x, y}] = touches.entries().next().value;
-      beginGesture({pointerId: id, clientX: x, clientY: y, pointerType: 'touch'}, false);
-    }
-    return;
-  }
-  if (!gesture || gesture.id !== event.pointerId) return;
-  const {action, drag, x, y} = gesture;
-  gesture = null;
-  stage.classList.remove('dragging');
-  const withinTap = Math.hypot(event.clientX - x, event.clientY - y) < 7;
-  if (click && !drag && withinTap) {
-    if (action && action === hit(event.clientX, event.clientY, event.pointerType === 'touch')) {
-      hideGuide();
-      const actionId = actions.get(action).id;
-      if (actionId !== 'music') music.startOnGesture();
-      $(actionId).click();
-    } else if (!action && event.pointerType === 'touch') {
-      showGuide();
-    }
-  }
-  requestDraw();
-}
-stage.addEventListener('pointerup', (event) => release(event, true));
-stage.addEventListener('pointercancel', (event) => release(event, false));
-stage.addEventListener('lostpointercapture', (event) => release(event, false));
-stage.addEventListener('pointerleave', clearHover);
-stage.addEventListener('wheel', (event) => {
-  if (event.ctrlKey || event.metaKey || event.deltaY === 0 || memory.phase === 'playing') return;
-  event.preventDefault();
-  hideGuide();
-  zoom = clamp(zoom + Math.sign(event.deltaY) * .07, portrait ? .86 : .76, 1.2);
-  requestDraw();
-}, {passive: false});
-stage.addEventListener('webglcontextlost', () => window.showTableFallback(), true);
-document.addEventListener('visibilitychange', () => {if (!document.hidden) requestDraw();});
-motion.addEventListener('change', requestDraw);
-
-function requestDraw(){
-  if(!frame&&!document.hidden)frame=requestAnimationFrame(render);
-}
-let lastRender = 0;
-let wasWaving = false;
-let wasUnfolding = false;
-function render(time) {
-  frame = 0;
-  const dt = Math.min(60, time - lastRender);
-  lastRender = time;
-  const moving = !motion.matches;
-  if (moving && music.playing) {
-    cylinderReel.rotation.x += dt * .003;
-    windingKey.rotation.z -= dt * .0012;
-  }
-  const ease = !moving || gesture?.drag ? 1 : 1 - Math.exp(-dt / 85);
-  shownAzimuth = interpolate(shownAzimuth, azimuth, ease);
-  shownElevation = interpolate(shownElevation, elevation, ease);
-  shownZoom = interpolate(shownZoom, zoom, ease);
-  const finaleTime = returnView ? Math.max(0, (time - finaleSince) / 1000) : 0;
-  let memoryCamera = 0;
-  if (returnView && memory.phase === 'playing') {
-    memoryCamera = T.MathUtils.smoothstep(finaleTime, .50, 2.72) *
-      (1 - T.MathUtils.smoothstep(finaleTime, 4.38, 5.38));
-    finaleCaption(finaleTime < 1.18 ? 0 : finaleTime < 3.05 ? 1 : 2);
-  }
-  target.copy(normalFocus).lerp(finalFocus, memoryCamera);
-  const cameraDistance = distance * shownZoom * (1 - memoryCamera * (portrait ? .16 : .25));
-  const span = Math.cos(shownElevation) * cameraDistance;
-  camera.position.set(target.x + Math.sin(shownAzimuth) * span,
-    target.y + Math.sin(shownElevation) * cameraDistance,
-    target.z + Math.cos(shownAzimuth) * span);
+function aim(seconds, reduced, resting) {
+  const closeup = reduced ? 0 : smooth(8.65, 11.4, seconds) * (1 - smooth(21.1, 25, seconds));
+  const setting = resting ? 0 : smooth(0, 1.3, seconds);
+  const portrait = camera.aspect < .9;
+  baseFocus.set(0, portrait ? 1.59 : 1.55, .15);
+  target.copy(baseFocus).lerp(joyFocus, closeup);
+  const baseDistance = portrait ? Math.min(29, Math.max(13.2, 10.25 / camera.aspect)) : 12.15;
+  const radius = baseDistance * T.MathUtils.lerp(shownZoom, .97, setting) * (1 - closeup * (portrait ? .17 : .10));
+  const yaw = T.MathUtils.lerp(shownAzimuth, -.10 * closeup, setting);
+  const tilt = T.MathUtils.lerp(shownElevation, .44 - .10 * closeup, setting);
+  const span = Math.cos(tilt) * radius;
+  camera.position.set(target.x + Math.sin(yaw) * span, target.y + Math.sin(tilt) * radius,
+    target.z + Math.cos(yaw) * span);
   camera.lookAt(target);
   camera.updateMatrixWorld();
-
-  const lightProgress = moving ? easeOut((time - dimBegin) / 610) : 1;
-  dimMix = interpolate(dimFrom, Number(dim), lightProgress);
-  toggle.rotation.x = interpolate(-.43, .43, dimMix);
-  const closingLight = returnView && moving ? memoryCamera * .77 : 0;
-  const roomDim = Math.max(dimMix, closingLight);
-  key.intensity = interpolate(3, .56, roomDim);
-  fill.intensity = interpolate(1.18, .44, roomDim);
-  bounce.intensity = interpolate(1.5, .46, roomDim);
-  lampKey.intensity = interpolate(34, 54, dimMix);
-  bulbMat.emissiveIntensity = interpolate(1.8, 3.2, dimMix);
-  renderer.toneMappingExposure = interpolate(1.26, 1.14, dimMix);
-
-  const candleAge = (time - candleStart) / 1000;
-  for (let i = 0; i < flames.length; i++) {
-    const elapsed = candleAge - i * .09;
-    const burn = moving && snuffed ? 1 - easeOut((elapsed + .04) / .18) : Number(!snuffed);
-    const t = time * .008 + i * 1.7;
-    const flame = flames[i];
-    flame.visible = burn > .012;
-    flame.rotation.z = moving ? .10 * Math.sin(t) - (1 - burn) * .53 : 0;
-    const flicker = moving ? Math.sin(t * 1.2) : 0;
-    flame.scale.set(1 + .045 * flicker, burn * (1 + .11 * flicker), 1);
-    const {cloud, vapor} = smoke[i];
-    cloud.visible = moving && snuffed && elapsed > .12 && elapsed < 1.28;
-    if (cloud.visible) {
-      const rise = (elapsed - .12) / 1.16;
-      cloud.position.x = .33 * rise + .049 * Math.sin(rise * 8);
-      cloud.position.y = flame.position.y + .64 * rise;
-      cloud.scale.setScalar(.55 + 2.7 * rise);
-      vapor.opacity = Math.sin(Math.PI * rise) * .25;
-    }
-  }
-  candleGlow.intensity = 3.9 * (snuffed ? moving ? 1 - easeOut(candleAge / .36) : 0 : 1);
-
-  const waving = (time - joyStart) / 1000;
-  const activeJoy = moving && waving >= 0 && waving < 1.13;
-  const hop = activeJoy ? Math.sin(Math.PI * waving / 1.13) : 0;
-  const reaching = memoryCamera * T.MathUtils.smoothstep(finaleTime, 1.10, 2.55);
-  wavingArm.rotation.z = activeJoy ? hop * .45 * Math.sin(waving * 23) : .33 * reaching;
-  toy.position.y = .16 + .13 * hop + .06 * reaching;
-  toy.rotation.y = -.11 + .30 * hop - .48 * reaching;
-  head.rotation.z = activeJoy ? .095 * hop * Math.sin(waving * 12) : .18 * reaching;
-  joyRing.visible = activeJoy;
-  joyRing.rotation.z = activeJoy ? waving * .30 : 0;
-
-  const letterAge = (time - letterStart) / 1000;
-  const closeAge = (time - letterClose) / 1000;
-  const closing = moving && closeAge >= 0 && closeAge < .43;
-  const opening = moving && closeAge === Infinity && (letterAge < .65 || $('card').open);
-  const flapAmount = closing ? 1 - easeOut((closeAge - .17) / .26) : opening ? easeOut(letterAge / .36) : 0;
-  const slide = closing ? 1 - easeOut(closeAge / .24) : opening ? easeOut((letterAge - .25) / .40) : 0;
-  const unfolding = opening || closing;
-  flapPivot.rotation.x = -flapAmount * 2.22;
-  greeting.visible = slide > .01;
-  greeting.position.set(0, .135 + .23 * slide, .81 * slide);
-  greeting.rotation.x = -.29 * slide;
-
-  const burst = candleAge - .25;
-  const activeBurst = moving && snuffed && burst >= 0 && burst < 1.47;
-  for (const {mesh, dx, dz, dy, spin} of particles) {
-    mesh.visible = activeBurst;
-    if (activeBurst) {
-      mesh.position.set(cakeHit.position.x + dx * burst,
-        Math.max(tableHeight + .021, 3.65 + dy * burst - 4.7 * burst * burst),
-        cakeHit.position.z + dz * burst);
-      mesh.rotation.set(burst * spin, burst * dx, burst * spin * .47);
-    }
-  }
-
-  const cameraMoving = Math.abs(azimuth - shownAzimuth) + Math.abs(elevation - shownElevation) +
-    Math.abs(zoom - shownZoom) > .002;
-  if (hoverPoint && !gesture && (hoverDirty || cameraMoving)) {
-    hoverDirty = false;
-    hovered = hit(...hoverPoint);
-    stage.style.cursor = hovered ? 'pointer' : '';
-  }
-  if (memory.update(time, !moving) || (returnView && memory.phase === 'saved')) finishFinale();
-  updateHover();
-  updateDiscoveryMarks();
-  if (activeJoy || wasWaving || unfolding !== wasUnfolding || closing || (opening && letterAge < .66) || lightProgress < 1 || returnView) {
-    renderer.shadowMap.needsUpdate = true;
-  }
-  wasWaving = activeJoy;
-  wasUnfolding = unfolding;
-  renderer.render(scene, camera);
-  if (cameraMoving || activeJoy || closing || returnView || (moving && (music.playing || lightProgress < 1 || letterAge < .66 || !snuffed || candleAge < 1.74))) requestDraw();
 }
-size();
-$('loading').hidden = true;
-showGuide();
-memory.restore(() => {
-  $('memory').hidden = false;
-  requestDraw();
-});
+function imprint() {
+  const ctx = memoryCanvas.getContext('2d');
+  const canvas = renderer.domElement;
+  const side = Math.min(canvas.width * .92, canvas.height * .91);
+  ctx.clearRect(0, 0, 384, 384);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(192, 192, 189, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(canvas, (canvas.width - side) / 2, (canvas.height - side) * .46, side, side, 0, 0, 384, 384);
+  ctx.fillStyle = '#ec97194a';
+  ctx.fillRect(0, 0, 384, 384);
+  const vignette = ctx.createRadialGradient(192, 174, 56, 192, 192, 192);
+  vignette.addColorStop(0, '#ffd59100');
+  vignette.addColorStop(1, '#f8ae53c9');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, 384, 384);
+  ctx.restore();
+  memoryImage.needsUpdate = true;
+  snapshot = true;
+}
+
+function draw(seconds, reduced, phase) {
+  shownAzimuth = reduced ? azimuth : T.MathUtils.lerp(shownAzimuth, azimuth, .24);
+  shownElevation = reduced ? elevation : T.MathUtils.lerp(shownElevation, elevation, .24);
+  shownZoom = reduced ? zoom : T.MathUtils.lerp(shownZoom, zoom, .24);
+  const resting = phase === 'ready';
+  if ((phase === 'done' || seconds >= 26.3) && snapshot) {
+    const settled = reduced || phase === 'done' ? 1 : smooth(26.3, 29.1, seconds);
+    orb.scale.setScalar(T.MathUtils.lerp(1.59, 1.0, settled));
+    renderer.render(memoryRoom, orbCamera);
+    return;
+  }
+  aim(seconds, reduced, resting);
+  const darkness = resting ? 0 : smooth(.72, 1.48, seconds);
+  const glow = smooth(22.05, 26.3, seconds);
+  const snapshotCue = seconds >= 21.55 && !snapshot;
+  bounce.intensity = T.MathUtils.lerp(1.50, .28, darkness);
+  key.intensity = T.MathUtils.lerp(3, .15, darkness);
+  fill.intensity = T.MathUtils.lerp(1.18, .24, darkness);
+  const ignition = smooth(0, .48, seconds);
+  flames.forEach((flame, i) => {
+    const level = smooth(.06 + i * .08, .36 + i * .08, seconds);
+    const flicker = reduced ? 0 : Math.sin(seconds * 8 + i * 2.1) * .06;
+    flame.visible = !resting && level > 0;
+    flame.scale.set(.96 + .70 * glow, level * (1 + flicker + 1.1 * glow), .96 + .70 * glow);
+    flame.rotation.z = flicker;
+  });
+  candleGlow.intensity = resting ? 0 : ignition * (23 + 80 * glow);
+  renderer.toneMappingExposure = 1.11 + 2.05 * glow;
+
+  const arrival = reduced ? Number(seconds >= 10.8) : smooth(8.88, 11.55, seconds);
+  const departure = smooth(23.3, 26.1, seconds);
+  toy.visible = arrival > .35 && departure < 1;
+  dissolve.value = smooth(.35, .96, arrival) * (1 - departure);
+  joyLight.intensity = 27 * smooth(.08, .84, arrival) * (1 - departure);
+  const gesture = reduced ? 0 : Math.sin((seconds - 11.56) * 2.9) * smooth(11.4, 12.6, seconds) *
+    (1 - smooth(19.2, 21.4, seconds));
+  toy.position.y = .16 + gesture * .035;
+  head.rotation.z = -.075 + gesture * .09;
+  wavingArm.rotation.z = -.22 + gesture * .16;
+
+  const assembling = !reduced && seconds >= 8.88 && arrival < .999;
+  joyMist.visible = assembling;
+  if (assembling) {
+    joyMistMat.opacity = smooth(0, .15, arrival) * (1 - smooth(.79, 1, arrival));
+    for (let i = 0; i < particleCount; i++) {
+      const index = i * 3;
+      const curl = (1 - arrival) * Math.sin(i * 1.17 + seconds * 3);
+      positions[index] = T.MathUtils.lerp(starts[index], arrivals[index], arrival) + curl * .32;
+      positions[index + 1] = T.MathUtils.lerp(starts[index + 1], arrivals[index + 1], arrival);
+      positions[index + 2] = T.MathUtils.lerp(starts[index + 2], arrivals[index + 2], arrival) + curl * .21;
+    }
+    mistGeometry.attributes.position.needsUpdate = true;
+  }
+
+  renderer.render(scene, camera);
+  if (snapshotCue) imprint();
+  // Allows a background tab to catch up directly to the ending.
+  if (!snapshot && seconds >= 26.3) imprint();
+}
+function intersectsCake(clientX, clientY, touch) {
+  const rect = stage.getBoundingClientRect();
+  const offsets = touch ? [[0,0], [11,0], [-11,0], [0,11], [0,-11]] : [[0,0]];
+  for (const [x, y] of offsets) {
+    ndc.set((clientX + x - rect.left) / rect.width * 2 - 1, -((clientY + y - rect.top) / rect.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    if (ray.intersectObject(cakeHit, true).some(({object}) => object.visible && object.parent.visible)) return true;
+  }
+  return false;
+}
+return {
+  resize, draw, intersectsCake,
+  get canvas() { return renderer.domElement; },
+  get orbRadius() {
+    return size.height / (2 * Math.tan(T.MathUtils.degToRad(orbCamera.fov / 2)) *
+      Math.sqrt(orbCamera.position.z ** 2 - 1));
+  },
+  get moving() {
+    return Math.abs(shownAzimuth - azimuth) + Math.abs(shownElevation - elevation) + Math.abs(shownZoom - zoom) > .002;
+  },
+  orbit(yaw, tilt) {
+    azimuth = clamp(azimuth + yaw, -.57, .57);
+    elevation = clamp(elevation + tilt, .32, .99);
+  },
+  zoom(factor) { zoom = clamp(zoom * factor, camera.aspect < .9 ? .88 : .77, 1.19); },
+  glowPosition() {
+    flames[1].getWorldPosition(flameWorld).project(camera);
+    return [clamp((flameWorld.x + 1) / 2, 0, 1), clamp((1 - flameWorld.y) / 2, 0, 1)];
+  },
+  reset() {
+    snapshot = false;
+    azimuth = shownAzimuth = .03;
+    elevation = shownElevation = .57;
+    zoom = shownZoom = 1;
+  }
+};
+}

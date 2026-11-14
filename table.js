@@ -1,3 +1,4 @@
+import { moments } from './timeline.js?v=memory-loop';
 import * as T from './vendor/three.module.js';
 
 export function createBirthdayScene(stage) {
@@ -451,6 +452,7 @@ const smooth = (start, end, seconds) => T.MathUtils.smoothstep(seconds, start, e
 const clamp = T.MathUtils.clamp;
 const baseFocus = new T.Vector3();
 const joyFocus = new T.Vector3(1.22, 1.93, -.02);
+let orbDistance = 6.8;
 const flameWorld = new T.Vector3();
 const ray = new T.Raycaster();
 const ndc = new T.Vector2();
@@ -468,13 +470,13 @@ function resize(width, height) {
   camera.aspect = orbCamera.aspect = width / height;
   camera.fov = camera.aspect < .9 ? 44 : 36;
   camera.updateProjectionMatrix();
-  orbCamera.position.z = Math.max(6.8, 4.65 / orbCamera.aspect);
+  orbDistance = Math.max(6.8, 4.65 / orbCamera.aspect);
   orbCamera.updateProjectionMatrix();
   renderer.setSize(width, height, false);
 }
 function aim(seconds, reduced, resting) {
-  const closeup = reduced ? 0 : smooth(8.65, 11.4, seconds) * (1 - smooth(21.1, 25, seconds));
-  const setting = resting ? 0 : smooth(0, 1.3, seconds);
+  const closeup = reduced ? 0 : smooth(moments.joyStart - .4, moments.joyEnd, seconds) * (1 - smooth(moments.textEnd, moments.orbStart - 1.2, seconds));
+  const setting = resting ? 0 : smooth(0, 1.9, seconds);
   const portrait = camera.aspect < .9;
   baseFocus.set(0, portrait ? 1.59 : 1.55, .15);
   target.copy(baseFocus).lerp(joyFocus, closeup);
@@ -515,22 +517,23 @@ function draw(seconds, reduced, phase) {
   shownElevation = reduced ? elevation : T.MathUtils.lerp(shownElevation, elevation, .24);
   shownZoom = reduced ? zoom : T.MathUtils.lerp(shownZoom, zoom, .24);
   const resting = phase === 'ready';
-  if ((phase === 'done' || seconds >= 26.3) && snapshot) {
-    const settled = reduced || phase === 'done' ? 1 : smooth(26.3, 29.1, seconds);
+  if ((phase === 'done' || seconds >= moments.orbStart) && snapshot) {
+    const settled = reduced || phase === 'done' ? 1 : smooth(moments.orbStart, moments.orbClear + .5, seconds);
     orb.scale.setScalar(T.MathUtils.lerp(1.59, 1.0, settled));
+    orbCamera.position.z = orbDistance;
     renderer.render(memoryRoom, orbCamera);
     return;
   }
   aim(seconds, reduced, resting);
-  const darkness = resting ? 0 : smooth(.72, 1.48, seconds);
-  const glow = smooth(22.05, 26.3, seconds);
-  const snapshotCue = seconds >= 21.55 && !snapshot;
+  const darkness = resting ? 0 : smooth(moments.darkFrom, moments.darkTo, seconds);
+  const glow = smooth(moments.glowStart, moments.orbStart, seconds);
+  const snapshotCue = seconds >= moments.textEnd + .2 && !snapshot;
   bounce.intensity = T.MathUtils.lerp(1.50, .28, darkness);
   key.intensity = T.MathUtils.lerp(3, .15, darkness);
   fill.intensity = T.MathUtils.lerp(1.18, .24, darkness);
-  const ignition = smooth(0, .48, seconds);
+  const ignition = smooth(0, .66, seconds);
   flames.forEach((flame, i) => {
-    const level = smooth(.06 + i * .08, .36 + i * .08, seconds);
+    const level = smooth(.08 + i * .10, .51 + i * .10, seconds);
     const flicker = reduced ? 0 : Math.sin(seconds * 8 + i * 2.1) * .06;
     flame.visible = !resting && level > 0;
     flame.scale.set(.96 + .70 * glow, level * (1 + flicker + 1.1 * glow), .96 + .70 * glow);
@@ -539,18 +542,20 @@ function draw(seconds, reduced, phase) {
   candleGlow.intensity = resting ? 0 : ignition * (23 + 80 * glow);
   renderer.toneMappingExposure = 1.11 + 2.05 * glow;
 
-  const arrival = reduced ? Number(seconds >= 10.8) : smooth(8.88, 11.55, seconds);
-  const departure = smooth(23.3, 26.1, seconds);
+  const arrival = reduced ? Number(seconds >= moments.joyEnd - .5) : smooth(moments.joyStart, moments.joyEnd, seconds);
+  const departure = smooth(moments.glowStart + 2, moments.orbStart - .2, seconds);
   toy.visible = arrival > .35 && departure < 1;
   dissolve.value = smooth(.35, .96, arrival) * (1 - departure);
   joyLight.intensity = 27 * smooth(.08, .84, arrival) * (1 - departure);
-  const gesture = reduced ? 0 : Math.sin((seconds - 11.56) * 2.9) * smooth(11.4, 12.6, seconds) *
-    (1 - smooth(19.2, 21.4, seconds));
+  const elapsed = seconds - moments.joyEnd;
+  const speaking = smooth(moments.joyEnd, moments.joyEnd + 1.6, seconds) *
+    (1 - smooth(moments.textEnd - 1, moments.textEnd + .5, seconds));
+  const gesture = reduced ? 0 : speaking * (.55 * Math.sin(elapsed * 1.8) + .35 * Math.sin(elapsed * .59));
   toy.position.y = .16 + gesture * .035;
   head.rotation.z = -.075 + gesture * .09;
   wavingArm.rotation.z = -.22 + gesture * .16;
 
-  const assembling = !reduced && seconds >= 8.88 && arrival < .999;
+  const assembling = !reduced && seconds >= moments.joyStart && arrival < .999;
   joyMist.visible = assembling;
   if (assembling) {
     joyMistMat.opacity = smooth(0, .15, arrival) * (1 - smooth(.79, 1, arrival));
@@ -567,7 +572,7 @@ function draw(seconds, reduced, phase) {
   renderer.render(scene, camera);
   if (snapshotCue) imprint();
   // Allows a background tab to catch up directly to the ending.
-  if (!snapshot && seconds >= 26.3) imprint();
+  if (!snapshot && seconds >= moments.orbStart) imprint();
 }
 function intersectsCake(clientX, clientY, touch) {
   const rect = stage.getBoundingClientRect();
@@ -584,7 +589,7 @@ return {
   get canvas() { return renderer.domElement; },
   get orbRadius() {
     return size.height / (2 * Math.tan(T.MathUtils.degToRad(orbCamera.fov / 2)) *
-      Math.sqrt(orbCamera.position.z ** 2 - 1));
+      Math.sqrt(orbDistance ** 2 - 1));
   },
   get moving() {
     return Math.abs(shownAzimuth - azimuth) + Math.abs(shownElevation - elevation) + Math.abs(shownZoom - zoom) > .002;
@@ -598,7 +603,12 @@ return {
     flames[1].getWorldPosition(flameWorld).project(camera);
     return [clamp((flameWorld.x + 1) / 2, 0, 1), clamp((1 - flameWorld.y) / 2, 0, 1)];
   },
-  reset() {
+  enterOrb(amount) {
+    orb.scale.setScalar(1);
+    orbCamera.position.z = T.MathUtils.lerp(orbDistance, 1.06, amount);
+    renderer.render(memoryRoom, orbCamera);
+  },
+  resetView() {
     snapshot = false;
     azimuth = shownAzimuth = .03;
     elevation = shownElevation = .57;

@@ -263,6 +263,12 @@ tube(lampHit,brass,[[0,.18,0],[0,.8,-.15],[-.18,1.7,-.4],[.08,2.54,-.40],[.58,2.
 const shade=group(lampHit,.95,2.40,.04);
 shade.rotation.z=.20;
 shade.rotation.x=-.10;
+const switchPivot = group(lampHit, -.32, .17, .36);
+round(switchPivot, brass, 0, 0, 0, .10, .044, .10);
+const toggle = group(switchPivot, 0, .035, 0);
+cylinder(toggle, brass, 0, .045, 0, .024, .033, .09, 16);
+round(toggle, brass, 0, .097, 0, .034, .035, .034);
+
 const inner=enamel.clone();inner.side=T.DoubleSide;
 lathe(shade,inner,0,0,0,[[.67,0],[.69,.04],[.64,.16],[.56,.25],[.40,.38],[.25,.44],[.14,.55],[.11,.64],[0,.65]]);
 lathe(shade,brass,0,0,0,[[.682,-.01],[.708,.016],[.702,.049],[.677,.072]]);
@@ -288,7 +294,7 @@ const envelopeMap=texture(512,(ctx,s)=>{
   };
   polygon([[0,0],[.5,.57],[0,1]],'#eac18d');
   polygon([[1,0],[.5,.57],[1,1]],'#e7bb83');
-  polygon([[0,0],[1,0],[.5,.61]],'#f8deb3');
+
   ctx.textAlign='center';ctx.fillStyle='#7d4841';ctx.font='italic 73px Georgia';ctx.fillText('Linlin',s*.5,s*.85);
 });
 const envelopeTop=mat('#ffffff',.92);envelopeTop.map=envelopeMap;
@@ -296,11 +302,48 @@ const envelopeEdge=mat('#d9ad77',.91);
 box(letterHit,[envelopeEdge,envelopeEdge,envelopeTop,envelopeEdge,envelopeEdge,envelopeEdge],0,.06,0,1.85,.12,1.26);
 const seal=mat('#a94954',.45);
 const sealSoft=mat('#cf716c',.58);
-cylinder(letterHit,seal,0,.145,.073,.107,.125,.057);
+const waxSeal = cylinder(letterHit,seal,0,.145,.073,.107,.125,.057);
 const heart= new T.Shape();
 heart.moveTo(0,-.049);heart.bezierCurveTo(-.136,.041,-.047,.106,0,.053);
 heart.bezierCurveTo(.047,.106,.136,.041,0,-.049);
 const stamp=item(letterHit,new T.ShapeGeometry(heart),sealSoft,0,.177,.073,false);stamp.rotation.x=-Math.PI/2;
+
+// The flap pivots on the back seam and reveals the card beneath it.
+const flapPivot = group(letterHit, 0, .128, -.626);
+const flapShape = new T.Shape();
+flapShape.moveTo(-.92, 0);
+flapShape.lineTo(.92, 0);
+flapShape.lineTo(0, -.765);
+flapShape.closePath();
+const flapPaper = mat('#f8deb3', .95);
+flapPaper.side = T.DoubleSide;
+const flap = item(flapPivot, new T.ShapeGeometry(flapShape), flapPaper, 0, 0, 0);
+flap.rotation.x = -Math.PI / 2;
+const sealGroup = group(flapPivot, 0, 0, .699);
+sealGroup.add(stamp, waxSeal);
+stamp.position.z = waxSeal.position.z = 0;
+stamp.position.y -= .128;
+waxSeal.position.y -= .128;
+
+const greeting = group(letterHit, 0, .135, 0);
+const cardFace = texture(512, (ctx, size) => {
+  ctx.fillStyle = '#fff1d6';
+  ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = '#ac6c5f';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(18, 18, size - 36, size - 36);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8a434b';
+  ctx.font = 'italic 69px Georgia';
+  ctx.fillText('For Linlin', size / 2, 249);
+  ctx.font = '42px Georgia';
+  ctx.fillText('11 · 14', size / 2, 319);
+});
+const greetingPaper = mat('#ffffff', .95);
+greetingPaper.map = cardFace;
+const paperEdge = mat('#e8c99a', .9);
+box(greeting, [paperEdge,paperEdge,greetingPaper,paperEdge,paperEdge,paperEdge], 0, 0, 0, 1.53, .032, .94);
+greeting.visible = false;
 
 const joyHit=group(room,3.45,tableHeight,-.16);
 const toy=group(joyHit,0,.16,0);toy.rotation.y=-.11;
@@ -402,162 +445,346 @@ scene.add(key);
 const fill=new T.DirectionalLight('#cdd5f7',1.18);
 fill.position.set(6,4,1.5);scene.add(fill);
 
-const actions=new Map([[cakeHit,'candle'],[joyHit,'joy'],[letterHit,'letter'],[lampHit,'lamp']]);
-const ray=new T.Raycaster();
-const coord=new T.Vector2();
-function hit(x,y){
-  const rect=renderer.domElement.getBoundingClientRect();
-  coord.set((x-rect.left)/rect.width*2-1,-(y-rect.top)/rect.height*2+1);
-  ray.setFromCamera(coord,camera);
-  for(const {object} of ray.intersectObjects([...actions.keys()],true)){
-    if(!object.visible || (object.parent===joyRing&&!joyRing.visible))continue;
-    let group=object.parent;
-    while(group&&!actions.has(group))group=group.parent;
-    if(group)return actions.get(group);
+const actions = new Map([
+  [cakeHit, { id: 'candle', height: 2.83, radius: 1.87 }],
+  [joyHit, { id: 'joy', height: 2.39, radius: .72 }],
+  [letterHit, { id: 'letter', height: .22, radius: 1.02 }],
+  [lampHit, { id: 'lamp', height: 3.13, radius: .82 }]
+]);
+const objects = [...actions.keys()];
+const ray = new T.Raycaster();
+const coord = new T.Vector2();
+const projection = new T.Vector3();
+const origin = new T.Vector3();
+const label = $('object-label');
+const labels = {
+  candle: ['吹蜡烛', 'Blow out the candles'],
+  relight: ['重新点亮', 'Relight the candles'],
+  joy: ['跟乐乐打招呼', 'Say hi to Joy'],
+  letter: ['拆开信封', 'Open the envelope'],
+  lamp: ['切到烛光', 'Switch to candlelight'],
+  brighten: ['打开房间灯光', 'Brighten the room']
+};
+const highlight = item(room, new T.RingGeometry(.9, 1, 64),
+  new T.MeshBasicMaterial({color: '#ffc780', transparent: true, opacity: .36, depthWrite: false, side: T.DoubleSide}),
+  0, tableHeight + .035, 0, false);
+highlight.rotation.x = -Math.PI / 2;
+highlight.visible = false;
+const smoke = flames.map((flame) => {
+  const cloud = group(flame.parent, 0, flame.position.y, 0);
+  const vapor = new T.MeshBasicMaterial({color: '#e8d9d3', transparent: true, opacity: 0, depthWrite: false});
+  round(cloud, vapor, 0, 0, 0, .08, .14, .08).castShadow = false;
+  cloud.visible = false;
+  return {cloud, vapor};
+});
+
+let azimuth = .03, elevation = .57, shownAzimuth = azimuth, shownElevation = elevation;
+let distance = 12, zoom = 1, shownZoom = 1, portrait = false;
+let dim = false, dimMix = 0, dimBegin = -Infinity, dimFrom = 0;
+let snuffed = false, candleStart = -Infinity, joyStart = -Infinity, letterStart = -Infinity;
+let frame = 0, gesture = null, hovered = null, hoverPoint = null, nextAngle = 0;
+let hoverDirty = false;
+let pendingDialog = null;
+let letterClose = -Infinity;
+const orbitSteps = [[.03,.57],[-.35,.45],[.32,.83]];
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const easeOut = (value) => 1 - (1 - clamp(value, 0, 1)) ** 3;
+const interpolate = (a, b, t) => a + (b - a) * t;
+
+const mouseOffsets = [[0, 0]];
+const touchOffsets = [[0, 0], [10, 0], [-10, 0], [0, 10], [0, -10]];
+function hit(x, y, finger = false) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const offsets = finger ? touchOffsets : mouseOffsets;
+  for (const [dx, dy] of offsets) {
+    coord.set(((x + dx - rect.left) / rect.width) * 2 - 1, -((y + dy - rect.top) / rect.height) * 2 + 1);
+    ray.setFromCamera(coord, camera);
+    for (const {object} of ray.intersectObjects(objects, true)) {
+      let node = object;
+      while (node?.visible && !actions.has(node)) node = node.parent;
+      if (actions.has(node) && node.visible) return node;
+    }
   }
   return null;
 }
-
-let azimuth=.03, elevation=.57, shownAzimuth=azimuth, shownElevation=elevation;
-let distance=12, portrait=false, dim=false, snuffed=false, burstStart=-Infinity, joyStart=-Infinity;
-let frame=0, gesture=null, nextAngle=0;
-const orbitSteps=[[.03,.57],[-.35,.45],[.32,.83]];
-const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
-function size(){
-  const {width,height}=stage.getBoundingClientRect();
-  if(width<1||height<1)return;
-  camera.aspect=width/height;
-  portrait=camera.aspect<.9;
-  camera.fov=portrait ? 44 : 36;
-  distance=portrait?Math.min(29,Math.max(13.2,10.8/camera.aspect)):12.4;
-  target.set(0,portrait ? 1.57 : 1.53,portrait ? .07 : .17);
+function updateHover() {
+  if (!hovered) {
+    label.hidden = true;
+    highlight.visible = false;
+    return;
+  }
+  const {id, height, radius} = actions.get(hovered);
+  const labelId = id === 'lamp' && dim ? 'brighten' : id === 'candle' && snuffed ? 'relight' : id;
+  if (label.dataset.action !== labelId) {
+    const [zh, en] = labels[labelId];
+    const english = document.createElement('span');
+    english.lang = 'en';
+    english.textContent = en;
+    label.replaceChildren(zh, english);
+    label.dataset.action = labelId;
+  }
+  origin.set(0, height, 0);
+  projection.copy(hovered.localToWorld(origin)).project(camera);
+  label.style.left = clamp((projection.x + 1) * stage.clientWidth / 2, 78, stage.clientWidth - 78) + 'px';
+  label.style.top = clamp((1 - projection.y) * stage.clientHeight / 2 - 9, 94, stage.clientHeight - 105) + 'px';
+  label.hidden = false;
+  highlight.position.x = hovered.position.x;
+  highlight.position.z = hovered.position.z;
+  highlight.scale.set(radius, radius * (id === 'letter' ? .73 : 1), 1);
+  highlight.visible = true;
+}
+function clearHover() {
+  hoverPoint = null;
+  hovered = null;
+  stage.style.cursor = '';
+  requestDraw();
+}
+function size() {
+  const {width, height} = stage.getBoundingClientRect();
+  if (width < 1 || height < 1) return;
+  camera.aspect = width / height;
+  portrait = camera.aspect < .9;
+  camera.fov = portrait ? 44 : 36;
+  distance = portrait ? Math.min(29, Math.max(13.2, 10.8 / camera.aspect)) : 12.4;
+  target.set(0, portrait ? 1.57 : 1.53, portrait ? .07 : .17);
   camera.updateProjectionMatrix();
-  renderer.setSize(width,height,false);
+  renderer.setSize(width, height, false);
+  hoverDirty = true;
   requestDraw();
 }
 new ResizeObserver(size).observe(stage);
-function message(copy){
-  $('notice').textContent=copy;
-  clearTimeout(message.timer);
-  message.timer=setTimeout(()=>$('notice').textContent='',4100);
+
+let noticeTimer;
+function message(copy) {
+  $('notice').textContent = copy;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => $('notice').textContent = '', 4100);
 }
-$('view').addEventListener('click',()=>{
-  nextAngle=(nextAngle+1)%orbitSteps.length;
-  [azimuth,elevation]=orbitSteps[nextAngle];
+$('view').addEventListener('click', () => {
+  nextAngle = (nextAngle + 1) % orbitSteps.length;
+  [azimuth, elevation] = orbitSteps[nextAngle];
+  zoom = 1;
   requestDraw();
 });
-$('lamp').addEventListener('click',()=>{
-  dim=!dim;
-  $('lamp').setAttribute('aria-pressed',String(dim));
-  key.intensity=dim ? .56 : 3.0; fill.intensity=dim ? .44 : 1.18; bounce.intensity=dim ? .46 : 1.50;
-  lampKey.intensity=dim?54:34; bulbMat.emissiveIntensity=dim?3.2:1.8;
-  renderer.toneMappingExposure=dim?1.14:1.26;
+$('lamp').addEventListener('click', () => {
+  dim = !dim;
+  dimBegin = performance.now();
+  dimFrom = dimMix;
+  $('lamp').setAttribute('aria-pressed', String(dim));
+  message(dim ? '烛光模式 · Candlelight' : '房间灯光 · Room light');
   requestDraw();
 });
-const rng=random(1114);
-const particles=Array.from({length:54},(_,i)=>{
-  const mesh=box(room,paperMats[i%4],0,0,0,.069,.018,.137,false);
-  mesh.visible=false;
-  const a=rng()*Math.PI*2, speed=.7+rng()*2.6;
-  return {mesh,dx:Math.cos(a)*speed,dz:Math.sin(a)*speed,dy:1.5+rng()*3.0,spin:.8+rng()*7};
+const rng = random(1114);
+const particles = Array.from({length: 54}, (_, i) => {
+  const mesh = box(room, paperMats[i % 4], 0, 0, 0, .069, .018, .137, false);
+  mesh.visible = false;
+  const angle = rng() * Math.PI * 2, speed = .7 + rng() * 2.6;
+  return {mesh, dx: Math.cos(angle) * speed, dz: Math.sin(angle) * speed, dy: 1.5 + rng() * 3, spin: .8 + rng() * 7};
 });
-$('candle').addEventListener('click',()=>{
-  snuffed=!snuffed;
-  flames.forEach((f)=>f.visible=!snuffed);
-  candleGlow.intensity=snuffed?0:3.9;
-  const candle=$('candle');
-  candle.setAttribute('aria-pressed',String(snuffed));
-  candle.firstChild.textContent=snuffed?'重新点亮':'吹蜡烛';
-  candle.lastElementChild.textContent=snuffed?'Relight':'Blow candles';
-  if(snuffed){
-    burstStart=performance.now();
-    message('许个愿吧，琳琳。 · Make a wish, Linlin.');
+function setCandleLabel(out) {
+  const button = $('candle');
+  button.firstChild.textContent = out ? '重新点亮' : '吹蜡烛';
+  button.lastElementChild.textContent = out ? 'Relight' : 'Blow candles';
+  button.setAttribute('aria-pressed', String(out));
+}
+$('candle').addEventListener('click', () => {
+  snuffed = !snuffed;
+  candleStart = performance.now();
+  setCandleLabel(snuffed);
+  if (snuffed) message('许个愿吧，琳琳。 · Make a wish, Linlin.');
+  else {
+    clearTimeout(noticeTimer);
+    $('notice').textContent = '';
   }
   requestDraw();
 });
-let joyTimer;
-$('joy').addEventListener('click',()=>{
-  if($('joy-card').open||joyTimer)return;
-  joyStart=performance.now();
-  const open=()=>{joyTimer=0;if(!$('card').open)$('joy-card').showModal();};
-  if(motion.matches)open();
-  else joyTimer=setTimeout(open,1060);
-  requestDraw();
-});
-$('card').addEventListener('close',()=>$('letter').focus({preventScroll:true}));
-$('joy-card').addEventListener('close',()=>$('joy').focus({preventScroll:true}));
-
-stage.addEventListener('pointerdown',(e)=>{
-  if(!e.isPrimary||e.button!==0)return;
-  gesture={id:e.pointerId,x:e.clientX,y:e.clientY,azimuth,elevation,drag:false};
-  stage.setPointerCapture(e.pointerId);
-});
-stage.addEventListener('pointermove',(e)=>{
-  if(!gesture){
-    if(e.pointerType==='mouse')stage.style.cursor=hit(e.clientX,e.clientY)?'pointer':'grab';
+function openWithMotion(dialogId, triggerId, duration) {
+  if (pendingDialog || document.querySelector('dialog[open]')) return;
+  clearHover();
+  const button = $(triggerId);
+  const dialog = $(dialogId);
+  if (motion.matches) {
+    dialog.showModal();
     return;
   }
-  if(e.pointerId!==gesture.id)return;
-  const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;
-  if(!gesture.drag&&Math.hypot(dx,dy)<7)return;
-  gesture.drag=true; stage.classList.add('dragging');stage.style.cursor='grabbing';
-  azimuth=clamp(gesture.azimuth-dx*.0045,-.61,.61);
-  elevation=clamp(gesture.elevation+dy*.004,.27,1.07);
+  button.setAttribute('aria-busy', 'true');
+  pendingDialog = setTimeout(() => {
+    pendingDialog = null;
+    button.removeAttribute('aria-busy');
+    if (!document.querySelector('dialog[open]')) dialog.showModal();
+  }, duration);
+  if (triggerId === 'joy') joyStart = performance.now();
+  else {
+    letterStart = performance.now();
+    letterClose = -Infinity;
+  }
+  requestDraw();
+}
+$('joy').addEventListener('click', () => openWithMotion('joy-card', 'joy', 1050));
+$('letter').addEventListener('click', () => {
+  if (!stage.closest('.failed')) openWithMotion('card', 'letter', 650);
+});
+$('card').addEventListener('close', () => {
+  $('letter').focus({preventScroll: true});
+  letterClose = performance.now();
   requestDraw();
 });
-function release(e, click){
-  if(!gesture||gesture.id!==e.pointerId)return;
-  const drag=gesture.drag;
-  gesture=null;stage.classList.remove('dragging');stage.style.cursor='grab';
-  if(click&&!drag){
-    const action=hit(e.clientX,e.clientY);
-    if(action)$(action).click();
+$('joy-card').addEventListener('close', () => $('joy').focus({preventScroll: true}));
+
+stage.addEventListener('pointerdown', (event) => {
+  if (!event.isPrimary || event.button !== 0) return;
+  const {pointerId: id, clientX: x, clientY: y, pointerType} = event;
+  gesture = {id, x, y, azimuth: shownAzimuth, elevation: shownElevation,
+    action: hit(x, y, pointerType === 'touch'), drag: false};
+  stage.setPointerCapture(id);
+});
+stage.addEventListener('pointermove', (event) => {
+  if (!gesture) {
+    if (event.pointerType === 'mouse') {
+      hoverPoint = [event.clientX, event.clientY];
+      hoverDirty = true;
+      requestDraw();
+    }
+    return;
   }
+  if (event.pointerId !== gesture.id) return;
+  const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+  if (!gesture.drag && Math.hypot(dx, dy) < 7) return;
+  gesture.drag = true;
+  if (hovered || hoverPoint) clearHover();
+  stage.classList.add('dragging');
+  azimuth = clamp(gesture.azimuth - dx * .0045, -.61, .61);
+  elevation = clamp(gesture.elevation + dy * .004, .27, 1.07);
+  requestDraw();
+});
+function release(event, click) {
+  if (!gesture || gesture.id !== event.pointerId) return;
+  const {action, drag, x, y} = gesture;
+  gesture = null;
+  stage.classList.remove('dragging');
+  const withinTap = Math.hypot(event.clientX - x, event.clientY - y) < 7;
+  if (click && !drag && action && withinTap && action === hit(event.clientX, event.clientY, event.pointerType === 'touch')) {
+    $(actions.get(action).id).click();
+  }
+  requestDraw();
 }
-stage.addEventListener('pointerup',(e)=>release(e,true));
-stage.addEventListener('pointercancel',(e)=>release(e,false));
-stage.addEventListener('lostpointercapture',(e)=>release(e,false));
-stage.addEventListener('webglcontextlost',()=>window.showTableFallback(),true);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)requestDraw();});
-motion.addEventListener('change',requestDraw);
+stage.addEventListener('pointerup', (event) => release(event, true));
+stage.addEventListener('pointercancel', (event) => release(event, false));
+stage.addEventListener('lostpointercapture', (event) => release(event, false));
+stage.addEventListener('pointerleave', clearHover);
+stage.addEventListener('wheel', (event) => {
+  if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
+  event.preventDefault();
+  zoom = clamp(zoom + Math.sign(event.deltaY) * .07, portrait ? .86 : .76, 1.2);
+  requestDraw();
+}, {passive: false});
+stage.addEventListener('webglcontextlost', () => window.showTableFallback(), true);
+document.addEventListener('visibilitychange', () => {if (!document.hidden) requestDraw();});
+motion.addEventListener('change', requestDraw);
 
 function requestDraw(){
   if(!frame&&!document.hidden)frame=requestAnimationFrame(render);
 }
-let wasWaving=false;
-function render(time){
-  frame=0;
-  const ease=motion.matches||gesture?.drag?1:.14;
-  shownAzimuth+= (azimuth-shownAzimuth)*ease;
-  shownElevation+= (elevation-shownElevation)*ease;
-  const span=Math.cos(shownElevation)*distance;
-  camera.position.set(target.x+Math.sin(shownAzimuth)*span,target.y+Math.sin(shownElevation)*distance,target.z+Math.cos(shownAzimuth)*span);
+let lastRender = 0;
+let wasWaving = false;
+let wasUnfolding = false;
+function render(time) {
+  frame = 0;
+  const dt = Math.min(60, time - lastRender);
+  lastRender = time;
+  const moving = !motion.matches;
+  const ease = !moving || gesture?.drag ? 1 : 1 - Math.exp(-dt / 85);
+  shownAzimuth = interpolate(shownAzimuth, azimuth, ease);
+  shownElevation = interpolate(shownElevation, elevation, ease);
+  shownZoom = interpolate(shownZoom, zoom, ease);
+  const span = Math.cos(shownElevation) * distance * shownZoom;
+  camera.position.set(target.x + Math.sin(shownAzimuth) * span,
+    target.y + Math.sin(shownElevation) * distance * shownZoom,
+    target.z + Math.cos(shownAzimuth) * span);
   camera.lookAt(target);
-  const waving=(time-joyStart)*.001;
-  const activeJoy=!motion.matches&&waving>=0&&waving<1.15;
-  wavingArm.rotation.z=activeJoy ? .36*Math.sin(waving*18) : 0;
-  toy.position.y=activeJoy ? .16+.12*Math.sin(Math.PI*waving/1.15) : .16;
-  joyRing.visible=activeJoy;
-  joyRing.rotation.z=activeJoy?waving*.24:0;
-  const burst=(time-burstStart)*.001;
-  const activeBurst=!motion.matches&&burst>=0&&burst<1.47;
-  for(const {mesh,dx,dz,dy,spin} of particles){
-    mesh.visible=activeBurst;
-    if(activeBurst){
-      mesh.position.set(cakeHit.position.x+dx*burst,Math.max(1.06,3.64+dy*burst-4.7*burst*burst),cakeHit.position.z+dz*burst);
-      mesh.rotation.set(burst*spin,burst*dx,burst*spin*.47);
+  camera.updateMatrixWorld();
+
+  const lightProgress = moving ? easeOut((time - dimBegin) / 610) : 1;
+  dimMix = interpolate(dimFrom, Number(dim), lightProgress);
+  toggle.rotation.x = interpolate(-.43, .43, dimMix);
+  key.intensity = interpolate(3, .56, dimMix);
+  fill.intensity = interpolate(1.18, .44, dimMix);
+  bounce.intensity = interpolate(1.5, .46, dimMix);
+  lampKey.intensity = interpolate(34, 54, dimMix);
+  bulbMat.emissiveIntensity = interpolate(1.8, 3.2, dimMix);
+  renderer.toneMappingExposure = interpolate(1.26, 1.14, dimMix);
+
+  const candleAge = (time - candleStart) / 1000;
+  for (let i = 0; i < flames.length; i++) {
+    const elapsed = candleAge - i * .09;
+    const burn = moving && snuffed ? 1 - easeOut((elapsed + .04) / .18) : Number(!snuffed);
+    const t = time * .008 + i * 1.7;
+    const flame = flames[i];
+    flame.visible = burn > .012;
+    flame.rotation.z = moving ? .10 * Math.sin(t) - (1 - burn) * .53 : 0;
+    const flicker = moving ? Math.sin(t * 1.2) : 0;
+    flame.scale.set(1 + .045 * flicker, burn * (1 + .11 * flicker), 1);
+    const {cloud, vapor} = smoke[i];
+    cloud.visible = moving && snuffed && elapsed > .12 && elapsed < 1.28;
+    if (cloud.visible) {
+      const rise = (elapsed - .12) / 1.16;
+      cloud.position.x = .33 * rise + .049 * Math.sin(rise * 8);
+      cloud.position.y = flame.position.y + .64 * rise;
+      cloud.scale.setScalar(.55 + 2.7 * rise);
+      vapor.opacity = Math.sin(Math.PI * rise) * .25;
     }
   }
-  if(!snuffed&&!motion.matches)flames.forEach((flame,i)=>{
-    const t=time*.008+i*1.7;
-    flame.rotation.z=.10*Math.sin(t);
-    flame.scale.set(1+.045*Math.sin(t*1.6),1+.11*Math.sin(t*1.2),1);
-  });
-  if(activeJoy || wasWaving) renderer.shadowMap.needsUpdate = true;
-  wasWaving=activeJoy;
-  renderer.render(scene,camera);
-  const turning=Math.abs(azimuth-shownAzimuth)+Math.abs(elevation-shownElevation)>.002;
-  if(turning||activeBurst||activeJoy||(!snuffed&&!motion.matches))requestDraw();
+  candleGlow.intensity = 3.9 * (snuffed ? moving ? 1 - easeOut(candleAge / .36) : 0 : 1);
+
+  const waving = (time - joyStart) / 1000;
+  const activeJoy = moving && waving >= 0 && waving < 1.13;
+  const hop = activeJoy ? Math.sin(Math.PI * waving / 1.13) : 0;
+  wavingArm.rotation.z = activeJoy ? hop * .45 * Math.sin(waving * 23) : 0;
+  toy.position.y = .16 + .13 * hop;
+  toy.rotation.y = -.11 + .30 * hop;
+  head.rotation.z = activeJoy ? .095 * hop * Math.sin(waving * 12) : 0;
+  joyRing.visible = activeJoy;
+  joyRing.rotation.z = activeJoy ? waving * .30 : 0;
+
+  const letterAge = (time - letterStart) / 1000;
+  const closeAge = (time - letterClose) / 1000;
+  const closing = moving && closeAge >= 0 && closeAge < .43;
+  const opening = moving && closeAge === Infinity && (letterAge < .65 || $('card').open);
+  const flapAmount = closing ? 1 - easeOut((closeAge - .17) / .26) : opening ? easeOut(letterAge / .36) : 0;
+  const slide = closing ? 1 - easeOut(closeAge / .24) : opening ? easeOut((letterAge - .25) / .40) : 0;
+  const unfolding = opening || closing;
+  flapPivot.rotation.x = -flapAmount * 2.22;
+  greeting.visible = slide > .01;
+  greeting.position.set(0, .135 + .23 * slide, .81 * slide);
+  greeting.rotation.x = -.29 * slide;
+
+  const burst = candleAge - .25;
+  const activeBurst = moving && snuffed && burst >= 0 && burst < 1.47;
+  for (const {mesh, dx, dz, dy, spin} of particles) {
+    mesh.visible = activeBurst;
+    if (activeBurst) {
+      mesh.position.set(cakeHit.position.x + dx * burst,
+        Math.max(tableHeight + .021, 3.65 + dy * burst - 4.7 * burst * burst),
+        cakeHit.position.z + dz * burst);
+      mesh.rotation.set(burst * spin, burst * dx, burst * spin * .47);
+    }
+  }
+
+  const cameraMoving = Math.abs(azimuth - shownAzimuth) + Math.abs(elevation - shownElevation) +
+    Math.abs(zoom - shownZoom) > .002;
+  if (hoverPoint && !gesture && (hoverDirty || cameraMoving)) {
+    hoverDirty = false;
+    hovered = hit(...hoverPoint);
+    stage.style.cursor = hovered ? 'pointer' : '';
+  }
+  updateHover();
+  if (activeJoy || wasWaving || unfolding !== wasUnfolding || closing || (opening && letterAge < .66) || lightProgress < 1) {
+    renderer.shadowMap.needsUpdate = true;
+  }
+  wasWaving = activeJoy;
+  wasUnfolding = unfolding;
+  renderer.render(scene, camera);
+  if (cameraMoving || activeJoy || closing || (moving && (lightProgress < 1 || letterAge < .66 || !snuffed || candleAge < 1.74))) requestDraw();
 }
 size();
-$('loading').hidden=true;
+$('loading').hidden = true;

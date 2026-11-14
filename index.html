@@ -22,6 +22,28 @@ dialog{width:min(91vw,490px);max-height:90svh;overflow:auto;border:1px solid #db
 dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-size:clamp(1.45rem,5vw,2rem);margin:5px 32px 15px 0;color:#853e41}dialog h2 small{display:block;font-size:.63em;font-style:italic;font-weight:400;margin-top:6px}dialog p{font-size:1.03rem;line-height:1.68;margin:10px 0}dialog p[lang]{color:#66483f}.close{position:absolute;top:10px;right:10px;min-width:44px;padding:0;background:#f0dac5;color:#683c33;font-size:1.3rem}.close:hover{background:#e7c7a9}
 #notice{position:absolute;left:50%;bottom:104px;z-index:2;transform:translateX(-50%);margin:0;width:max-content;max-width:90%;padding:9px 13px;border-radius:7px;background:#2e1d16ea;color:var(--ivory);text-align:center;font:500 .86rem/1.5 var(--ui);box-shadow:0 5px 15px #1b100b6e;pointer-events:none}#notice:empty{display:none}
 @media(max-width:680px){footer{display:grid;justify-items:center;justify-content:stretch;gap:7px}.controls{justify-content:center}.controls button{padding-inline:9px}.hint{text-align:center}.hint span{display:inline;margin-left:.45em}#notice{bottom:116px}}
+#object-label {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  max-width: calc(100% - 20px);
+  padding: 5px 10px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: #2a1a14ed;
+  box-shadow: 0 4px 16px #28130966;
+  text-align: center;
+  white-space: nowrap;
+  font-size: .77rem;
+}
+#object-label span { display: block; font-size: .64rem; color: var(--muted); }
+#object-label[hidden], .failed .hint { display: none; }
+dialog[open] { animation: unfold .24s ease-out both; }
+@keyframes unfold {
+  from { opacity: 0; transform: translateY(12px) scale(.97); }
+}
+@media (prefers-reduced-motion: reduce) { dialog[open] { animation: none; } }
 </style>
 </head>
 <body>
@@ -29,15 +51,16 @@ dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-s
 <header><h1>琳琳，生日快乐！<small lang="en">Happy Birthday, Linlin!</small></h1><time datetime="2026-11-14">11 月 14 日 · <span lang="en">Nov 14</span></time></header>
 <div id="stage" role="img" aria-label="可转动视角的生日桌，放着草莓蛋糕、台灯、乐乐和信封。 A 3D birthday table with a strawberry cake, lamp, Joy, and an envelope."></div>
 <p class="status" id="loading">正在布置生日桌… <span lang="en">Setting the table…</span></p>
+<div id="object-label" aria-hidden="true" hidden></div>
 <p id="notice" role="status"></p>
 <footer>
-<p class="hint">拖动看桌面 <span lang="en">Drag to look around</span></p>
+<p class="hint">拖动看桌面，点物件互动 <span lang="en">Drag to look around · Tap an object</span></p>
 <div class="controls">
 <button type="button" id="view">换个角度<span lang="en">Change view</span></button>
 <button type="button" id="lamp" aria-pressed="false">台灯<span lang="en">Lamp</span></button>
 <button type="button" id="candle" aria-pressed="false">吹蜡烛<span lang="en">Blow candles</span></button>
-<button type="button" id="joy">乐乐<span lang="en">Joy</span></button>
-<button type="button" id="letter">打开贺卡<span lang="en">Open card</span></button>
+<button type="button" id="joy" aria-haspopup="dialog" aria-controls="joy-card">乐乐<span lang="en">Joy</span></button>
+<button type="button" id="letter" aria-haspopup="dialog" aria-controls="card">打开贺卡<span lang="en">Open card</span></button>
 </div>
 </footer>
 </main>
@@ -56,15 +79,21 @@ dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-s
 <p lang="en">I heard you dressed up as me once, Linlin! Now it’s my turn to celebrate you. Here’s to days full of laughter, and quiet ones when you need them.</p>
 </dialog>
 <script>
-document.querySelector('#letter').addEventListener('click', () => document.querySelector('#card').showModal());
+const card = document.querySelector('#card');
+document.querySelector('#letter').addEventListener('click', () => {
+  if (!document.querySelector('#stage canvas') || document.querySelector('.scene').classList.contains('failed')) {
+    if (!card.open) card.showModal();
+  }
+});
 window.showTableFallback = () => {
   document.querySelector('.scene').classList.add('failed');
+  document.querySelector('#object-label').hidden = true;
   document.querySelector('#loading').hidden = false;
   document.querySelector('#loading').textContent = '当前浏览器无法显示 3D 桌景，仍可打开贺卡。 · The 3D table is unavailable. You can still open the card.';
 };
 </script>
 <script type="module">
-import('./table.js').catch((error) => { console.error(error); window.showTableFallback(); });
+import('./table.js?v=2').catch((error) => { console.error(error); window.showTableFallback(); });
 </script>
 </body>
 </html>

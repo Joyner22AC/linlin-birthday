@@ -1,5 +1,6 @@
 import * as T from './vendor/three.module.js';
 import { createBirthdayMemory } from './memory.js?v=1';
+import { connectBirthdayMusic } from './music.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage');
@@ -484,6 +485,41 @@ for (const [x, z, tilt] of [[.59,.265,.26],[.36,.414,-.23]]) {
   }
 }
 
+// A walnut music box with a moving brass cylinder and a gold winding key.
+const musicHit = group(room, -3.21, tableHeight, -.01);
+musicHit.rotation.y = .20;
+const boxWood = mat('#6b3e3f', .44);
+const insetWood = mat('#512b36', .67);
+box(musicHit, boxWood, 0, .185, 0, 1.25, .36, .81);
+box(musicHit, brass, 0, .055, 0, 1.32, .035, .86);
+box(musicHit, brass, 0, .335, 0, 1.28, .035, .84);
+box(musicHit, insetWood, 0, .355, 0, 1.12, .025, .69);
+const lid = group(musicHit, 0, .35, -.40);
+lid.rotation.x = -.82;
+box(lid, boxWood, 0, .04, .405, 1.26, .10, .83);
+box(lid, brass, 0, -.016, .398, 1.10, .016, .67);
+box(lid, insetWood, 0, -.03, .398, 1.01, .014, .59);
+const cylinderReel = group(musicHit, -.18, .43, .035);
+rod(cylinderReel, brass, [-.31,0,0], [.31,0,0], .092, 32);
+for (let i = 0; i < 6; i++) {
+  const ring = item(cylinderReel, new T.TorusGeometry(.093, .008, 8, 24), brass, i * .1 - .25, 0, 0, false);
+  ring.rotation.y = Math.PI / 2;
+  round(cylinderReel, brass, i * .10 - .25, Math.cos(i) * .095, Math.sin(i) * .095, .019, .022, .021);
+}
+const windingKey = group(musicHit, .14, .204, .431);
+rod(windingKey, brass, [0,0,0], [0,0,.091], .023);
+for (const x of [-.057, .057]) {
+  item(windingKey, new T.TorusGeometry(.049, .015, 9, 24), brass, x, 0, .087);
+}
+const indicator = new T.MeshStandardMaterial({
+  color: '#c38c4b', emissive: '#ffad3d', emissiveIntensity: 0, roughness: .48
+});
+round(musicHit, indicator, -.41, .217, .411, .034, .034, .018);
+const music = connectBirthdayMusic($('birthday-audio'), $('music'), (playing) => {
+  indicator.emissiveIntensity = playing ? 1.8 : 0;
+  requestDraw();
+});
+
 const partyColors=['#e1877a','#ead088','#8ca992','#ecc7b1'];
 const paperMats=partyColors.map((c)=>mat(c,.89));
 const pareRng=random(203);
@@ -513,6 +549,7 @@ const actions = new Map([
   [joyHit, { id: 'joy', height: 2.39, radius: .72 }],
   [letterHit, { id: 'letter', height: .22, radius: 1.02 }],
   [lampHit, { id: 'lamp', height: 3.13, radius: .82 }],
+  [musicHit, { id: 'music', height: .92, radius: .76 }],
   [pancitHit, { id: 'pancit', height: .34, radius: 1.03 }]
 ]);
 const objects = [...actions.keys()];
@@ -556,6 +593,8 @@ const labels = {
   letter: ['拆开信封', 'Open the envelope'],
   memory: ['看看今天的记忆球', 'Revisit the birthday memory'],
   pancit: ['看看这盘生日面', 'Discover the birthday noodles'],
+  music: ['播放生日歌', 'Play the birthday song'],
+  pauseMusic: ['暂停生日歌', 'Pause the birthday song'],
   lamp: ['切到烛光', 'Switch to candlelight'],
   brighten: ['打开房间灯光', 'Brighten the room']
 };
@@ -636,7 +675,7 @@ function updateHover() {
     return;
   }
   const {id, height, radius} = actions.get(object);
-  const labelId = id === 'lamp' && dim ? 'brighten' : id === 'candle' && snuffed ? 'relight' : id;
+  const labelId = id === 'music' && music.playing ? 'pauseMusic' : id === 'lamp' && dim ? 'brighten' : id === 'candle' && snuffed ? 'relight' : id;
   setActionLabel(labelId);
   const [x, y] = projectObject(object, height);
   label.style.left = clamp(x, 85, stage.clientWidth - 85) + 'px';
@@ -942,7 +981,9 @@ function release(event, click) {
   if (click && !drag && withinTap) {
     if (action && action === hit(event.clientX, event.clientY, event.pointerType === 'touch')) {
       hideGuide();
-      $(actions.get(action).id).click();
+      const actionId = actions.get(action).id;
+      if (actionId !== 'music') music.startOnGesture();
+      $(actionId).click();
     } else if (!action && event.pointerType === 'touch') {
       showGuide();
     }
@@ -975,6 +1016,10 @@ function render(time) {
   const dt = Math.min(60, time - lastRender);
   lastRender = time;
   const moving = !motion.matches;
+  if (moving && music.playing) {
+    cylinderReel.rotation.x += dt * .003;
+    windingKey.rotation.z -= dt * .0012;
+  }
   const ease = !moving || gesture?.drag ? 1 : 1 - Math.exp(-dt / 85);
   shownAzimuth = interpolate(shownAzimuth, azimuth, ease);
   shownElevation = interpolate(shownElevation, elevation, ease);
@@ -1080,7 +1125,7 @@ function render(time) {
   wasWaving = activeJoy;
   wasUnfolding = unfolding;
   renderer.render(scene, camera);
-  if (cameraMoving || activeJoy || closing || returnView || (moving && (lightProgress < 1 || letterAge < .66 || !snuffed || candleAge < 1.74))) requestDraw();
+  if (cameraMoving || activeJoy || closing || returnView || (moving && (music.playing || lightProgress < 1 || letterAge < .66 || !snuffed || candleAge < 1.74))) requestDraw();
 }
 size();
 $('loading').hidden = true;

@@ -14,7 +14,7 @@ header{position:relative;pointer-events:none;z-index:1}
 header{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:clamp(18px,3vw,39px);background:linear-gradient(#1e100dbf,transparent)}
 h1{font:600 clamp(1.3rem,3vw,2.35rem)/1.16 var(--serif);margin:0;text-shadow:0 2px 15px #180900}h1 small{display:block;font-size:.54em;font-style:italic;margin-top:.42em;font-weight:400;color:var(--muted)}
 time{color:var(--muted);font-size:.78rem;letter-spacing:.12em;white-space:nowrap;text-shadow:0 1px 5px #2c170c}
-.status{position:absolute;left:50%;top:50%;width:min(85vw,32rem);transform:translate(-50%,-50%);text-align:center;color:var(--muted);line-height:1.65}.status[hidden]{display:none}.failed #stage,.failed #view,.failed #lamp,.failed #candle,.failed #joy,.failed #pancit,.failed #explore-hint{display:none}
+.status{position:absolute;left:50%;top:50%;width:min(85vw,32rem);transform:translate(-50%,-50%);text-align:center;color:var(--muted);line-height:1.65}.status[hidden]{display:none}.failed #stage,.failed #music,.failed #view,.failed #lamp,.failed #candle,.failed #joy,.failed #pancit,.failed #explore-hint{display:none}
 dialog{width:min(91vw,490px);max-height:90svh;overflow:auto;border:1px solid #dbb28c;padding:clamp(20px,5vw,36px);border-radius:5px;background:#fff0db;color:#462a24;box-shadow:0 24px 100px #1f100bc9;font-family:var(--serif)}
 dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-size:clamp(1.45rem,5vw,2rem);margin:5px 32px 15px 0;color:#853e41}dialog h2 small{display:block;font-size:.63em;font-style:italic;font-weight:400;margin-top:6px}dialog p{font-size:1.03rem;line-height:1.68;margin:10px 0}dialog p[lang]{color:#66483f}.close{position:absolute;top:10px;right:10px;min-width:44px;padding:0;background:#f0dac5;color:#683c33;font-size:1.3rem}.close:hover{background:#e7c7a9}
 #notice{position:absolute;left:50%;bottom:max(24px, calc(env(safe-area-inset-bottom) + 12px));z-index:2;transform:translateX(-50%);margin:0;width:max-content;max-width:90%;padding:9px 13px;border-radius:7px;background:#2e1d16ea;color:var(--ivory);text-align:center;font:500 .86rem/1.5 var(--ui);box-shadow:0 5px 15px #1b100b6e;pointer-events:none}#notice:empty{display:none}
@@ -142,7 +142,8 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <body>
 <main class="scene">
 <header><h1>琳琳，生日快乐！<small lang="en">Happy Birthday, Linlin!</small></h1><time datetime="2026-11-14">11 月 14 日 · <span lang="en">Nov 14</span></time></header>
-<div id="stage" role="img" aria-label="可转动视角的生日桌，放着草莓蛋糕、菲律宾生日面、台灯、乐乐和信封。 A 3D birthday table with a strawberry cake, Filipino birthday noodles, a lamp, Joy, and an envelope."></div>
+<div id="stage" role="img" aria-label="可转动视角的生日桌，放着草莓蛋糕、菲律宾生日面、台灯、音乐盒、乐乐和信封。 A 3D birthday table with a strawberry cake, Filipino birthday noodles, a lamp, a music box, Joy, and an envelope."></div>
+<audio id="birthday-audio" src="./assets/birthday-piano.mp3" loop preload="none"></audio>
 <p class="status" id="loading">正在布置生日桌… <span lang="en">Setting the table…</span></p>
 <div id="object-label" aria-hidden="true" hidden></div>
 <p id="notice" role="status"></p>
@@ -150,6 +151,7 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <p class="explore-hint" id="explore-hint" aria-hidden="true" hidden>拖动看桌面，点一点桌上的物件<span lang="en">Drag to look around. Tap something on the table.</span></p>
 <div aria-label="生日桌操作 · Birthday table controls" role="group">
 <button class="object-action" type="button" id="view" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home">换个角度<span lang="en">Change view</span></button>
+<button class="object-action" type="button" id="music" aria-pressed="false">播放音乐<span lang="en">Play music</span></button>
 <button class="object-action" type="button" id="lamp" aria-pressed="false">台灯<span lang="en">Lamp</span></button>
 <button class="object-action" type="button" id="candle" aria-pressed="false">吹蜡烛<span lang="en">Blow candles</span></button>
 <button class="object-action" type="button" id="joy" aria-haspopup="dialog" aria-controls="joy-card">乐乐<span lang="en">Joy</span></button>
@@ -202,7 +204,7 @@ window.showTableFallback = () => {
 };
 </script>
 <script type="module">
-import('./table.js?v=memory').catch((error) => { console.error(error); window.showTableFallback(); });
+import('./table.js?v=music').catch((error) => { console.error(error); window.showTableFallback(); });
 </script>
 </body>
 </html>

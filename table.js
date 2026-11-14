@@ -457,7 +457,35 @@ const coord = new T.Vector2();
 const projection = new T.Vector3();
 const origin = new T.Vector3();
 const label = $('object-label');
+const hint = $('explore-hint');
+const keyboardControls = document.querySelectorAll('.object-action');
+const marks = new Map(objects.map((object, index) => {
+  const mark = document.createElement('i');
+  mark.className = 'discovery-mark';
+  mark.setAttribute('aria-hidden', 'true');
+  mark.style.animationDelay = -index * .33 + 's';
+  stage.after(mark);
+  return [object, mark];
+}));
+let exploring = false;
+let guideTimer;
+function showGuide() {
+  exploring = true;
+  hint.hidden = false;
+  hint.classList.remove('dismissed');
+  clearTimeout(guideTimer);
+  guideTimer = setTimeout(hideGuide, 6400);
+  requestDraw();
+}
+function hideGuide() {
+  if (!exploring) return;
+  exploring = false;
+  clearTimeout(guideTimer);
+  hint.classList.add('dismissed');
+  for (const mark of marks.values()) mark.hidden = true;
+}
 const labels = {
+  view: ['方向键转动，回车切换视角', 'Arrow keys to orbit. Enter to switch views.'],
   candle: ['吹蜡烛', 'Blow out the candles'],
   relight: ['重新点亮', 'Relight the candles'],
   joy: ['跟乐乐打招呼', 'Say hi to Joy'],
@@ -484,6 +512,10 @@ let dim = false, dimMix = 0, dimBegin = -Infinity, dimFrom = 0;
 let snuffed = false, candleStart = -Infinity, joyStart = -Infinity, letterStart = -Infinity;
 let frame = 0, gesture = null, hovered = null, hoverPoint = null, nextAngle = 0;
 let hoverDirty = false;
+let keyboardObject = null;
+let keyboardView = false;
+const touches = new Map();
+let pinch = null;
 let pendingDialog = null;
 let letterClose = -Infinity;
 const orbitSteps = [[.03,.57],[-.35,.45],[.32,.83]];
@@ -507,31 +539,59 @@ function hit(x, y, finger = false) {
   }
   return null;
 }
+function setActionLabel(labelId) {
+  if (label.dataset.action === labelId) return;
+  const [zh, en] = labels[labelId];
+  const english = document.createElement('span');
+  english.lang = 'en';
+  english.textContent = en;
+  label.replaceChildren(zh, english);
+  label.dataset.action = labelId;
+}
+function projectObject(object, height) {
+  origin.set(0, height, 0);
+  projection.copy(object.localToWorld(origin)).project(camera);
+  return [(projection.x + 1) * stage.clientWidth / 2, (1 - projection.y) * stage.clientHeight / 2];
+}
 function updateHover() {
-  if (!hovered) {
+  const object = keyboardObject || hovered;
+  label.toggleAttribute('data-keyboard', !!keyboardObject || keyboardView);
+  if (keyboardView) {
+    setActionLabel('view');
+    label.style.left = '50%';
+    label.style.top = Math.max(94, stage.clientHeight - 22) + 'px';
+    label.hidden = false;
+    highlight.visible = false;
+    return;
+  }
+  if (!object) {
     label.hidden = true;
     highlight.visible = false;
     return;
   }
-  const {id, height, radius} = actions.get(hovered);
+  const {id, height, radius} = actions.get(object);
   const labelId = id === 'lamp' && dim ? 'brighten' : id === 'candle' && snuffed ? 'relight' : id;
-  if (label.dataset.action !== labelId) {
-    const [zh, en] = labels[labelId];
-    const english = document.createElement('span');
-    english.lang = 'en';
-    english.textContent = en;
-    label.replaceChildren(zh, english);
-    label.dataset.action = labelId;
-  }
-  origin.set(0, height, 0);
-  projection.copy(hovered.localToWorld(origin)).project(camera);
-  label.style.left = clamp((projection.x + 1) * stage.clientWidth / 2, 78, stage.clientWidth - 78) + 'px';
-  label.style.top = clamp((1 - projection.y) * stage.clientHeight / 2 - 9, 94, stage.clientHeight - 105) + 'px';
+  setActionLabel(labelId);
+  const [x, y] = projectObject(object, height);
+  label.style.left = clamp(x, 85, stage.clientWidth - 85) + 'px';
+  label.style.top = clamp(y - 9, 94, stage.clientHeight - 26) + 'px';
   label.hidden = false;
-  highlight.position.x = hovered.position.x;
-  highlight.position.z = hovered.position.z;
+  highlight.position.x = object.position.x;
+  highlight.position.z = object.position.z;
   highlight.scale.set(radius, radius * (id === 'letter' ? .73 : 1), 1);
   highlight.visible = true;
+}
+function updateDiscoveryMarks() {
+  if (!exploring) return;
+  for (const [object, mark] of marks) {
+    const {height} = actions.get(object);
+    const [x, y] = projectObject(object, height);
+    mark.hidden = object === hovered || x < 12 || x > stage.clientWidth - 12 || y < 85 || y > stage.clientHeight - 20;
+    if (!mark.hidden) {
+      mark.style.left = x + 'px';
+      mark.style.top = (y - 10) + 'px';
+    }
+  }
 }
 function clearHover() {
   hoverPoint = null;
@@ -560,6 +620,35 @@ function message(copy) {
   clearTimeout(noticeTimer);
   noticeTimer = setTimeout(() => $('notice').textContent = '', 4100);
 }
+for (const button of keyboardControls) {
+  button.addEventListener('focus', () => {
+    if (!button.matches(':focus-visible')) return;
+    hideGuide();
+    clearHover();
+    keyboardView = button.id === 'view';
+    keyboardObject = objects.find((object) => actions.get(object).id === button.id) || null;
+    requestDraw();
+  });
+  button.addEventListener('blur', () => {
+    keyboardObject = null;
+    keyboardView = false;
+    requestDraw();
+  });
+}
+$('view').addEventListener('keydown', (event) => {
+  const offsets = {ArrowLeft: [.10, 0], ArrowRight: [-.10, 0], ArrowUp: [0, .09], ArrowDown: [0, -.09]};
+  if (event.key === 'Home') {
+    [azimuth, elevation] = orbitSteps[0];
+    nextAngle = 0;
+    zoom = 1;
+  } else if (Object.hasOwn(offsets, event.key)) {
+    const [yaw, pitch] = offsets[event.key];
+    azimuth = clamp(azimuth + yaw, -.61, .61);
+    elevation = clamp(elevation + pitch, .27, 1.07);
+  } else return;
+  event.preventDefault();
+  requestDraw();
+});
 $('view').addEventListener('click', () => {
   nextAngle = (nextAngle + 1) % orbitSteps.length;
   [azimuth, elevation] = orbitSteps[nextAngle];
@@ -625,20 +714,46 @@ $('letter').addEventListener('click', () => {
   if (!stage.closest('.failed')) openWithMotion('card', 'letter', 650);
 });
 $('card').addEventListener('close', () => {
-  $('letter').focus({preventScroll: true});
   letterClose = performance.now();
   requestDraw();
 });
-$('joy-card').addEventListener('close', () => $('joy').focus({preventScroll: true}));
 
-stage.addEventListener('pointerdown', (event) => {
-  if (!event.isPrimary || event.button !== 0) return;
+function fingerDistance() {
+  const [a, b] = touches.values();
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+function beginGesture(event, tap) {
   const {pointerId: id, clientX: x, clientY: y, pointerType} = event;
   gesture = {id, x, y, azimuth: shownAzimuth, elevation: shownElevation,
-    action: hit(x, y, pointerType === 'touch'), drag: false};
-  stage.setPointerCapture(id);
+    action: tap ? hit(x, y, pointerType === 'touch') : null, drag: false};
+}
+stage.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  if (event.pointerType === 'touch') {
+    if (touches.size === 2) return;
+    touches.set(event.pointerId, {x: event.clientX, y: event.clientY});
+    if (touches.size === 2) {
+      gesture = null;
+      pinch = {distance: Math.max(1, fingerDistance()), zoom: shownZoom};
+      stage.setPointerCapture(event.pointerId);
+      hideGuide();
+      clearHover();
+      return;
+    }
+  } else if (gesture || pinch) return;
+  if (document.activeElement?.matches('.object-action')) document.activeElement.blur();
+  beginGesture(event, true);
+  stage.setPointerCapture(event.pointerId);
 });
 stage.addEventListener('pointermove', (event) => {
+  if (touches.has(event.pointerId)) {
+    touches.set(event.pointerId, {x: event.clientX, y: event.clientY});
+    if (pinch) {
+      zoom = clamp(pinch.zoom * pinch.distance / Math.max(1, fingerDistance()), portrait ? .86 : .76, 1.2);
+      requestDraw();
+      return;
+    }
+  }
   if (!gesture) {
     if (event.pointerType === 'mouse') {
       hoverPoint = [event.clientX, event.clientY];
@@ -651,6 +766,7 @@ stage.addEventListener('pointermove', (event) => {
   const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
   if (!gesture.drag && Math.hypot(dx, dy) < 7) return;
   gesture.drag = true;
+  hideGuide();
   if (hovered || hoverPoint) clearHover();
   stage.classList.add('dragging');
   azimuth = clamp(gesture.azimuth - dx * .0045, -.61, .61);
@@ -658,13 +774,28 @@ stage.addEventListener('pointermove', (event) => {
   requestDraw();
 });
 function release(event, click) {
+  touches.delete(event.pointerId);
+  if (pinch) {
+    if (touches.size > 1) return;
+    pinch = null;
+    if (touches.size) {
+      const [id, {x, y}] = touches.entries().next().value;
+      beginGesture({pointerId: id, clientX: x, clientY: y, pointerType: 'touch'}, false);
+    }
+    return;
+  }
   if (!gesture || gesture.id !== event.pointerId) return;
   const {action, drag, x, y} = gesture;
   gesture = null;
   stage.classList.remove('dragging');
   const withinTap = Math.hypot(event.clientX - x, event.clientY - y) < 7;
-  if (click && !drag && action && withinTap && action === hit(event.clientX, event.clientY, event.pointerType === 'touch')) {
-    $(actions.get(action).id).click();
+  if (click && !drag && withinTap) {
+    if (action && action === hit(event.clientX, event.clientY, event.pointerType === 'touch')) {
+      hideGuide();
+      $(actions.get(action).id).click();
+    } else if (!action && event.pointerType === 'touch') {
+      showGuide();
+    }
   }
   requestDraw();
 }
@@ -675,6 +806,7 @@ stage.addEventListener('pointerleave', clearHover);
 stage.addEventListener('wheel', (event) => {
   if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
   event.preventDefault();
+  hideGuide();
   zoom = clamp(zoom + Math.sign(event.deltaY) * .07, portrait ? .86 : .76, 1.2);
   requestDraw();
 }, {passive: false});
@@ -778,6 +910,7 @@ function render(time) {
     stage.style.cursor = hovered ? 'pointer' : '';
   }
   updateHover();
+  updateDiscoveryMarks();
   if (activeJoy || wasWaving || unfolding !== wasUnfolding || closing || (opening && letterAge < .66) || lightProgress < 1) {
     renderer.shadowMap.needsUpdate = true;
   }
@@ -788,3 +921,4 @@ function render(time) {
 }
 size();
 $('loading').hidden = true;
+showGuide();

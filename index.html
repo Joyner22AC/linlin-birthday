@@ -8,20 +8,16 @@
 <style>
 :root{color-scheme:dark;--ivory:#fff0d8;--muted:#e1c5a7;--edge:#f5c89247;--ui:system-ui,"Microsoft YaHei",sans-serif;--serif:Georgia,"Songti SC","SimSun",serif}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#251913;color:var(--ivory);font-family:var(--ui)}button,input{font:inherit}button{color:inherit;cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #ffcf7f;outline-offset:4px}
-.scene{position:relative;isolation:isolate;min-height:470px;height:100vh;height:100svh;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:radial-gradient(ellipse at 50% 56%,#735035,#281813 76%)}
+.scene{position:relative;isolation:isolate;min-height:470px;height:100vh;height:100svh;overflow:hidden;background:radial-gradient(ellipse at 50% 56%,#735035,#281813 76%)}
 #stage{position:absolute;inset:0;cursor:grab;touch-action:none;outline:none}#stage.dragging{cursor:grabbing}#stage canvas{display:block;width:100%;height:100%;outline:none}
-header,footer{position:relative;pointer-events:none;z-index:1}
+header{position:relative;pointer-events:none;z-index:1}
 header{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:clamp(18px,3vw,39px);background:linear-gradient(#1e100dbf,transparent)}
 h1{font:600 clamp(1.3rem,3vw,2.35rem)/1.16 var(--serif);margin:0;text-shadow:0 2px 15px #180900}h1 small{display:block;font-size:.54em;font-style:italic;margin-top:.42em;font-weight:400;color:var(--muted)}
 time{color:var(--muted);font-size:.78rem;letter-spacing:.12em;white-space:nowrap;text-shadow:0 1px 5px #2c170c}
-footer{padding:22px clamp(13px,3vw,39px) max(14px,env(safe-area-inset-bottom));background:linear-gradient(transparent,#1c100cc7);display:flex;justify-content:space-between;align-items:end;gap:12px}
-.hint{color:var(--muted);font-size:.73rem;margin:0;text-shadow:0 1px 4px #1a0a00}.hint span{display:block;margin-top:2px}
-.controls{display:flex;gap:5px;flex-wrap:wrap;justify-content:end;pointer-events:auto}.controls button,.close{border:1px solid var(--edge);background:#2d1c16e8;border-radius:99px;min-height:44px;padding:4px 11px;font-size:.78rem}.controls button:hover,.close:hover{background:#694736}.controls button span{display:block;font-size:.65rem;color:var(--muted)}.controls button[aria-pressed=true]{background:#674537}
-.status{position:absolute;left:50%;top:50%;width:min(85vw,32rem);transform:translate(-50%,-50%);text-align:center;color:var(--muted);line-height:1.65}.status[hidden]{display:none}.failed #stage,.failed #view,.failed #lamp,.failed #candle,.failed #joy{display:none}
+.status{position:absolute;left:50%;top:50%;width:min(85vw,32rem);transform:translate(-50%,-50%);text-align:center;color:var(--muted);line-height:1.65}.status[hidden]{display:none}.failed #stage,.failed #view,.failed #lamp,.failed #candle,.failed #joy,.failed #explore-hint{display:none}
 dialog{width:min(91vw,490px);max-height:90svh;overflow:auto;border:1px solid #dbb28c;padding:clamp(20px,5vw,36px);border-radius:5px;background:#fff0db;color:#462a24;box-shadow:0 24px 100px #1f100bc9;font-family:var(--serif)}
 dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-size:clamp(1.45rem,5vw,2rem);margin:5px 32px 15px 0;color:#853e41}dialog h2 small{display:block;font-size:.63em;font-style:italic;font-weight:400;margin-top:6px}dialog p{font-size:1.03rem;line-height:1.68;margin:10px 0}dialog p[lang]{color:#66483f}.close{position:absolute;top:10px;right:10px;min-width:44px;padding:0;background:#f0dac5;color:#683c33;font-size:1.3rem}.close:hover{background:#e7c7a9}
-#notice{position:absolute;left:50%;bottom:104px;z-index:2;transform:translateX(-50%);margin:0;width:max-content;max-width:90%;padding:9px 13px;border-radius:7px;background:#2e1d16ea;color:var(--ivory);text-align:center;font:500 .86rem/1.5 var(--ui);box-shadow:0 5px 15px #1b100b6e;pointer-events:none}#notice:empty{display:none}
-@media(max-width:680px){footer{display:grid;justify-items:center;justify-content:stretch;gap:7px}.controls{justify-content:center}.controls button{padding-inline:9px}.hint{text-align:center}.hint span{display:inline;margin-left:.45em}#notice{bottom:116px}}
+#notice{position:absolute;left:50%;bottom:max(24px, calc(env(safe-area-inset-bottom) + 12px));z-index:2;transform:translateX(-50%);margin:0;width:max-content;max-width:90%;padding:9px 13px;border-radius:7px;background:#2e1d16ea;color:var(--ivory);text-align:center;font:500 .86rem/1.5 var(--ui);box-shadow:0 5px 15px #1b100b6e;pointer-events:none}#notice:empty{display:none}
 #object-label {
   position: absolute;
   z-index: 2;
@@ -38,12 +34,76 @@ dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-s
   font-size: .77rem;
 }
 #object-label span { display: block; font-size: .64rem; color: var(--muted); }
-#object-label[hidden], .failed .hint { display: none; }
+#object-label[hidden] { display: none; }
+#object-label[data-keyboard] { outline: 2px solid #ffd18b; outline-offset: 3px; }
+.object-action {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.explore-hint {
+  position: absolute;
+  z-index: 1;
+  bottom: max(22px, calc(env(safe-area-inset-bottom) + 12px));
+  left: 50%;
+  width: max-content;
+  max-width: 94%;
+  margin: 0;
+  padding: 7px 13px;
+  transform: translateX(-50%);
+  color: var(--ivory);
+  background: #241610cc;
+  border-radius: 16px;
+  text-align: center;
+  font-size: .75rem;
+  pointer-events: none;
+  transition: opacity .4s ease;
+}
+.explore-hint span { display: block; color: var(--muted); font-size: .65rem; }
+.explore-hint.dismissed { opacity: 0; }
+.discovery-mark {
+  position: absolute;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-radius: 2px;
+  background: #fff1b4;
+  box-shadow: 0 0 13px 4px #ffbb6280;
+  pointer-events: none;
+  animation: glimmer 1.65s ease-in-out infinite alternate;
+}
+@keyframes glimmer { from { opacity: .38; } to { opacity: .94; } }
+.discovery-mark[hidden] { display: none; }
+.failed #letter {
+  width: max-content;
+  height: auto;
+  min-height: 44px;
+  padding: 7px 13px;
+  left: 50%;
+  top: calc(50% + 84px);
+  transform: translateX(-50%);
+  clip-path: none;
+  pointer-events: auto;
+  border: 1px solid var(--edge);
+  border-radius: 99px;
+  background: #573929;
+}
+.failed #letter span { display: block; font-size: .7rem; }
+
 dialog[open] { animation: unfold .24s ease-out both; }
 @keyframes unfold {
   from { opacity: 0; transform: translateY(12px) scale(.97); }
 }
-@media (prefers-reduced-motion: reduce) { dialog[open] { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  dialog[open], .discovery-mark { animation: none; }
+  .explore-hint { transition: none; }
+}
 </style>
 </head>
 <body>
@@ -53,16 +113,14 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <p class="status" id="loading">正在布置生日桌… <span lang="en">Setting the table…</span></p>
 <div id="object-label" aria-hidden="true" hidden></div>
 <p id="notice" role="status"></p>
-<footer>
-<p class="hint">拖动看桌面，点物件互动 <span lang="en">Drag to look around · Tap an object</span></p>
-<div class="controls">
-<button type="button" id="view">换个角度<span lang="en">Change view</span></button>
-<button type="button" id="lamp" aria-pressed="false">台灯<span lang="en">Lamp</span></button>
-<button type="button" id="candle" aria-pressed="false">吹蜡烛<span lang="en">Blow candles</span></button>
-<button type="button" id="joy" aria-haspopup="dialog" aria-controls="joy-card">乐乐<span lang="en">Joy</span></button>
-<button type="button" id="letter" aria-haspopup="dialog" aria-controls="card">打开贺卡<span lang="en">Open card</span></button>
+<p class="explore-hint" id="explore-hint" aria-hidden="true" hidden>拖动看桌面，点一点桌上的物件<span lang="en">Drag to look around. Tap something on the table.</span></p>
+<div aria-label="生日桌操作 · Birthday table controls" role="group">
+<button class="object-action" type="button" id="view" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home">换个角度<span lang="en">Change view</span></button>
+<button class="object-action" type="button" id="lamp" aria-pressed="false">台灯<span lang="en">Lamp</span></button>
+<button class="object-action" type="button" id="candle" aria-pressed="false">吹蜡烛<span lang="en">Blow candles</span></button>
+<button class="object-action" type="button" id="joy" aria-haspopup="dialog" aria-controls="joy-card">乐乐<span lang="en">Joy</span></button>
+<button class="object-action" type="button" id="letter" aria-haspopup="dialog" aria-controls="card">打开贺卡<span lang="en">Open card</span></button>
 </div>
-</footer>
 </main>
 <dialog id="card" aria-labelledby="card-title">
 <form method="dialog"><button class="close" type="submit" aria-label="关闭 · Close">×</button></form>
@@ -93,7 +151,7 @@ window.showTableFallback = () => {
 };
 </script>
 <script type="module">
-import('./table.js?v=2').catch((error) => { console.error(error); window.showTableFallback(); });
+import('./table.js?v=3').catch((error) => { console.error(error); window.showTableFallback(); });
 </script>
 </body>
 </html>

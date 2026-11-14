@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#251913">
+<title>琳琳，生日快乐！ · Happy Birthday, Linlin!</title>
+<style>
+:root{color-scheme:dark;--ivory:#fff0d8;--muted:#e1c5a7;--edge:#f5c89247;--ui:system-ui,"Microsoft YaHei",sans-serif;--serif:Georgia,"Songti SC","SimSun",serif}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#251913;color:var(--ivory);font-family:var(--ui)}button,input{font:inherit}button{color:inherit;cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #ffcf7f;outline-offset:4px}
+.scene{position:relative;isolation:isolate;min-height:470px;height:100vh;height:100svh;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:radial-gradient(ellipse at 50% 56%,#735035,#281813 76%)}
+#stage{position:absolute;inset:0;cursor:grab;touch-action:none;outline:none}#stage.dragging{cursor:grabbing}#stage canvas{display:block;width:100%;height:100%;outline:none}
+header,footer{position:relative;pointer-events:none;z-index:1}
+header{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:clamp(18px,3vw,39px);background:linear-gradient(#1e100dbf,transparent)}
+h1{font:600 clamp(1.3rem,3vw,2.35rem)/1.16 var(--serif);margin:0;text-shadow:0 2px 15px #180900}h1 small{display:block;font-size:.54em;font-style:italic;margin-top:.42em;font-weight:400;color:var(--muted)}
+time{color:var(--muted);font-size:.78rem;letter-spacing:.12em;white-space:nowrap;text-shadow:0 1px 5px #2c170c}
+footer{padding:22px clamp(13px,3vw,39px) max(14px,env(safe-area-inset-bottom));background:linear-gradient(transparent,#1c100cc7);display:flex;justify-content:space-between;align-items:end;gap:12px}
+.hint{color:var(--muted);font-size:.73rem;margin:0;text-shadow:0 1px 4px #1a0a00}.hint span{display:block;margin-top:2px}
+.controls{display:flex;gap:5px;flex-wrap:wrap;justify-content:end;pointer-events:auto}.controls button,.close{border:1px solid var(--edge);background:#2d1c16e8;border-radius:99px;min-height:44px;padding:4px 11px;font-size:.78rem}.controls button:hover,.close:hover{background:#694736}.controls button span{display:block;font-size:.65rem;color:var(--muted)}.controls button[aria-pressed=true]{background:#674537}
+.status{position:absolute;left:50%;top:50%;width:min(85vw,32rem);transform:translate(-50%,-50%);text-align:center;color:var(--muted);line-height:1.65}.status[hidden]{display:none}.failed #stage,.failed #view,.failed #lamp,.failed #candle,.failed #joy{display:none}
+dialog{width:min(91vw,490px);max-height:90svh;overflow:auto;border:1px solid #dbb28c;padding:clamp(20px,5vw,36px);border-radius:5px;background:#fff0db;color:#462a24;box-shadow:0 24px 100px #1f100bc9;font-family:var(--serif)}
+dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-size:clamp(1.45rem,5vw,2rem);margin:5px 32px 15px 0;color:#853e41}dialog h2 small{display:block;font-size:.63em;font-style:italic;font-weight:400;margin-top:6px}dialog p{font-size:1.03rem;line-height:1.68;margin:10px 0}dialog p[lang]{color:#66483f}.close{position:absolute;top:10px;right:10px;min-width:44px;padding:0;background:#f0dac5;color:#683c33;font-size:1.3rem}.close:hover{background:#e7c7a9}
+#notice{position:absolute;left:50%;bottom:104px;z-index:2;transform:translateX(-50%);margin:0;width:max-content;max-width:90%;padding:9px 13px;border-radius:7px;background:#2e1d16ea;color:var(--ivory);text-align:center;font:500 .86rem/1.5 var(--ui);box-shadow:0 5px 15px #1b100b6e;pointer-events:none}#notice:empty{display:none}
+@media(max-width:680px){footer{display:grid;justify-items:center;justify-content:stretch;gap:7px}.controls{justify-content:center}.controls button{padding-inline:9px}.hint{text-align:center}.hint span{display:inline;margin-left:.45em}#notice{bottom:116px}}
+</style>
+</head>
+<body>
+<main class="scene">
+<header><h1>琳琳，生日快乐！<small lang="en">Happy Birthday, Linlin!</small></h1><time datetime="2026-11-14">11 月 14 日 · <span lang="en">Nov 14</span></time></header>
+<div id="stage" role="img" aria-label="可转动视角的生日桌，放着草莓蛋糕、台灯、乐乐和信封。 A 3D birthday table with a strawberry cake, lamp, Joy, and an envelope."></div>
+<p class="status" id="loading">正在布置生日桌… <span lang="en">Setting the table…</span></p>
+<p id="notice" role="status"></p>
+<footer>
+<p class="hint">拖动看桌面 <span lang="en">Drag to look around</span></p>
+<div class="controls">
+<button type="button" id="view">换个角度<span lang="en">Change view</span></button>
+<button type="button" id="lamp" aria-pressed="false">台灯<span lang="en">Lamp</span></button>
+<button type="button" id="candle" aria-pressed="false">吹蜡烛<span lang="en">Blow candles</span></button>
+<button type="button" id="joy">乐乐<span lang="en">Joy</span></button>
+<button type="button" id="letter">打开贺卡<span lang="en">Open card</span></button>
+</div>
+</footer>
+</main>
+<dialog id="card" aria-labelledby="card-title">
+<form method="dialog"><button class="close" type="submit" aria-label="关闭 · Close">×</button></form>
+<h2 id="card-title">给琳琳<small lang="en">For Linlin</small></h2>
+<p>愿新的一岁，有好好吃饭的日常、说走就走的小旅行，还有喜欢的事可以慢慢做。</p>
+<p lang="en">Here’s to good meals, little adventures, and plenty of time for the things you love.</p>
+<p>今天的愿望，悄悄收好。希望有一天，你忽然发现它已经实现啦。</p>
+<p lang="en">Keep today’s wish close. May you wake up one day and realize that it has come true.</p>
+</dialog>
+<dialog id="joy-card" aria-labelledby="joy-title">
+<form method="dialog"><button class="close" type="submit" aria-label="关闭 · Close">×</button></form>
+<h2 id="joy-title">乐乐来给你过生日啦！<small lang="en">A note from Joy</small></h2>
+<p>琳琳，听说你也扮演过我！这次换我来给你庆生。愿新的一岁有值得大笑的事，也有可以安心歇一歇的日子。</p>
+<p lang="en">I heard you dressed up as me once, Linlin! Now it’s my turn to celebrate you. Here’s to days full of laughter, and quiet ones when you need them.</p>
+</dialog>
+<script>
+document.querySelector('#letter').addEventListener('click', () => document.querySelector('#card').showModal());
+window.showTableFallback = () => {
+  document.querySelector('.scene').classList.add('failed');
+  document.querySelector('#loading').hidden = false;
+  document.querySelector('#loading').textContent = '当前浏览器无法显示 3D 桌景，仍可打开贺卡。 · The 3D table is unavailable. You can still open the card.';
+};
+</script>
+<script type="module">
+import('./table.js').catch((error) => { console.error(error); window.showTableFallback(); });
+</script>
+</body>
+</html>

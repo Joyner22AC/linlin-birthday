@@ -1,4 +1,4 @@
-import { cueSheet, moments } from './timeline.js?v=memory-loop';
+import { cueSheet, moments } from './timeline.js?v=joy-arrival';
 
 const stage = document.querySelector('#stage');
 const action = document.querySelector('#birthday-action');
@@ -269,7 +269,7 @@ new ResizeObserver(resize).observe(stage);
 reducedMotion.addEventListener('change', requestDraw);
 document.addEventListener('visibilitychange', requestDraw);
 try {
-  const {createBirthdayScene} = await import('./table.js?v=memory-loop');
+  const {createBirthdayScene} = await import('./table.js?v=joy-arrival');
   scene = createBirthdayScene(stage);
   scene.canvas.addEventListener('webglcontextlost', fallback);
   action.disabled = false;

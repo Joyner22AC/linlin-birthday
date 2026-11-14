@@ -1,4 +1,4 @@
-import { moments } from './timeline.js?v=memory-loop';
+import { moments } from './timeline.js?v=joy-arrival';
 import * as T from './vendor/three.module.js';
 
 export function createBirthdayScene(stage) {
@@ -339,13 +339,15 @@ fill.position.set(6,4,1.5);scene.add(fill);
 
 
 // Particle positions sampled from Joy's actual meshes in her arrival pose.
-const joyCenter = new T.Vector3(0, 1.13, 0);
-const particleCount = 1450;
+const particleCount = 1850;
 const arrivals = new Float32Array(particleCount * 3);
-const starts = new Float32Array(arrivals.length);
 const positions = new Float32Array(arrivals.length);
+const colors = new Float32Array(arrivals.length);
+const paths = [];
 const mistGeometry = new T.BufferGeometry();
-mistGeometry.setAttribute('position', new T.BufferAttribute(positions, 3));
+const mistPositions = new T.BufferAttribute(positions, 3).setUsage(T.DynamicDrawUsage);
+mistGeometry.setAttribute('position', mistPositions);
+mistGeometry.setAttribute('color', new T.BufferAttribute(colors, 3));
 const mistBrush = texture(64, (ctx) => {
   const radial = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
   radial.addColorStop(0, '#fff8dc');
@@ -354,30 +356,99 @@ const mistBrush = texture(64, (ctx) => {
   ctx.fillStyle = radial;
   ctx.fillRect(0, 0, 64, 64);
 });
-const joyMistMat = new T.PointsMaterial({ map: mistBrush, color: '#ffda99', size: .075,
-  transparent: true, depthWrite: false, blending: T.AdditiveBlending });
-const joyMist = new T.Points(mistGeometry, joyMistMat);
-joyMist.frustumCulled = false;
-joyHit.add(joyMist);
+function particleBrush(core) {
+  return texture(64, (ctx) => {
+    const radial = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    radial.addColorStop(0, '#fff');
+    radial.addColorStop(core, '#ffffff70');
+    radial.addColorStop(1, '#ffffff00');
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, 64, 64);
+  });
+}
+function particleLayer(map, size) {
+  const material = new T.PointsMaterial({map, size, vertexColors: true, toneMapped: false, fog: false,
+    transparent: true, depthWrite: false, blending: T.AdditiveBlending});
+  const layer = new T.Points(mistGeometry, material);
+  layer.frustumCulled = false;
+  joyHit.add(layer);
+  return layer;
+}
+const joyHalo = particleLayer(particleBrush(.16), .19);
+const joySparks = particleLayer(particleBrush(.5), .073);
+const palette = ['#ffc15c', '#fce9ba', '#fff4de', '#9bd9ff', '#c5bbff'].map((color) => new T.Color(color));
+const tint = new T.Color();
 const randomMist = random(814);
-const samples = [];
-const sample = new T.Vector3();
-toy.updateWorldMatrix(true, true);
-toy.traverse((mesh) => {
-  if (!mesh.isMesh) return;
-  const vertices = mesh.geometry.getAttribute('position');
-  for (let i = 0; i < vertices.count; i += 3) {
-    sample.fromBufferAttribute(vertices, i);
-    mesh.localToWorld(sample);
-    joyHit.worldToLocal(sample);
-    samples.push(sample.clone());
+{
+  const faces = [];
+  const cumulativeAreas = [];
+  let totalArea = 0;
+  const edge = new T.Vector3();
+  const otherEdge = new T.Vector3();
+  const inverseJoy = new T.Matrix4();
+  toy.updateWorldMatrix(true, true);
+  inverseJoy.copy(joyHit.matrixWorld).invert();
+  toy.traverse((mesh) => {
+    if (!mesh.isMesh) return;
+    const {index} = mesh.geometry;
+    const positions = mesh.geometry.getAttribute('position');
+    const matrix = inverseJoy.clone().multiply(mesh.matrixWorld);
+    const vertices = Array.from({length: positions.count}, (_, i) =>
+      new T.Vector3().fromBufferAttribute(positions, i).applyMatrix4(matrix));
+    const count = index ? index.count : positions.count;
+    for (let i = 0; i + 2 < count; i += 3) {
+      const a = vertices[index ? index.getX(i) : i];
+      const b = vertices[index ? index.getX(i + 1) : i + 1];
+      const c = vertices[index ? index.getX(i + 2) : i + 2];
+      const area = edge.subVectors(b, a).cross(otherEdge.subVectors(c, a)).length() * .5;
+      if (area === 0) continue;
+      totalArea += area;
+      faces.push([a, b, c]);
+      cumulativeAreas.push(totalArea);
+    }
+  });
+  const sample = new T.Vector3();
+  for (let i = 0; i < particleCount; i++) {
+    const pick = randomMist() * totalArea;
+    let low = 0, high = faces.length - 1;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (pick < cumulativeAreas[middle]) high = middle;
+      else low = middle + 1;
+    }
+    const [a, b, c] = faces[low];
+    const radius = Math.sqrt(randomMist());
+    const share = randomMist();
+    sample.copy(a).multiplyScalar(1 - radius)
+      .addScaledVector(b, radius * (1 - share))
+      .addScaledVector(c, radius * share).toArray(arrivals, i * 3);
+    const finish = .46 + randomMist() * .19;
+    const angle = randomMist() * Math.PI * 2;
+    const spread = .48 + randomMist() * 1.64;
+    const height = .48 + randomMist() * 2.3;
+    const sweep = .38 + randomMist() * .7;
+    paths.push({finish, angle, spread, height, sweep});
+    tint.copy(palette[Math.floor(randomMist() * palette.length)])
+      .multiplyScalar(.24 + randomMist() * .76).toArray(colors, i * 3);
   }
-});
-for (let i = 0; i < particleCount; i++) {
-  samples[Math.floor(randomMist() * samples.length)].toArray(arrivals, i * 3);
-  const angle = randomMist() * Math.PI * 2;
-  const spread = .75 + randomMist() * 2.3;
-  starts.set([spread * Math.cos(angle), .2 + randomMist() * 3, spread * Math.sin(angle)], i * 3);
+}
+
+function drawJoyParticles(progress, reduced) {
+  const visibility = smooth(0, .23, progress) * (1 - smooth(.70, 1, progress));
+  joyHalo.visible = joySparks.visible = visibility > 0;
+  if (!joySparks.visible) return;
+  joyHalo.material.opacity = visibility * .20;
+  joySparks.material.opacity = visibility * .77;
+  for (let i = 0; i < particleCount; i++) {
+    const {finish, angle, spread, height, sweep} = paths[i];
+    const index = i * 3;
+    const motion = reduced ? 0 : 1 - smooth(finish - .44, finish, progress);
+    const bearing = angle + sweep * (1 - motion);
+    positions[index] = arrivals[index] + motion * Math.cos(bearing) * spread;
+    positions[index + 1] = T.MathUtils.lerp(arrivals[index + 1], height, motion);
+    positions[index + 2] = arrivals[index + 2] + motion * Math.sin(bearing) * spread;
+  }
+  mistPositions.needsUpdate = true;
 }
 
 const joyMaterials = new Set();
@@ -475,7 +546,7 @@ function resize(width, height) {
   renderer.setSize(width, height, false);
 }
 function aim(seconds, reduced, resting) {
-  const closeup = reduced ? 0 : smooth(moments.joyStart - .4, moments.joyEnd, seconds) * (1 - smooth(moments.textEnd, moments.orbStart - 1.2, seconds));
+  const closeup = reduced ? 0 : smooth(moments.joyStart - .4, moments.joyEnd - 2, seconds) * (1 - smooth(moments.textEnd, moments.orbStart - 1.2, seconds));
   const setting = resting ? 0 : smooth(0, 1.9, seconds);
   const portrait = camera.aspect < .9;
   baseFocus.set(0, portrait ? 1.59 : 1.55, .15);
@@ -542,11 +613,12 @@ function draw(seconds, reduced, phase) {
   candleGlow.intensity = resting ? 0 : ignition * (23 + 80 * glow);
   renderer.toneMappingExposure = 1.11 + 2.05 * glow;
 
-  const arrival = reduced ? Number(seconds >= moments.joyEnd - .5) : smooth(moments.joyStart, moments.joyEnd, seconds);
+  const arrival = clamp((seconds - moments.joyStart) / (moments.joyEnd - moments.joyStart), 0, 1);
   const departure = smooth(moments.glowStart + 2, moments.orbStart - .2, seconds);
-  toy.visible = arrival > .35 && departure < 1;
-  dissolve.value = smooth(.35, .96, arrival) * (1 - departure);
-  joyLight.intensity = 27 * smooth(.08, .84, arrival) * (1 - departure);
+  const reveal = smooth(.65, .96, arrival);
+  toy.visible = reveal > 0 && departure < 1;
+  dissolve.value = reveal * (1 - departure);
+  joyLight.intensity = (8 * smooth(0, .40, arrival) + 19 * reveal) * (1 - departure);
   const elapsed = seconds - moments.joyEnd;
   const speaking = smooth(moments.joyEnd, moments.joyEnd + 1.6, seconds) *
     (1 - smooth(moments.textEnd - 1, moments.textEnd + .5, seconds));
@@ -555,19 +627,7 @@ function draw(seconds, reduced, phase) {
   head.rotation.z = -.075 + gesture * .09;
   wavingArm.rotation.z = -.22 + gesture * .16;
 
-  const assembling = !reduced && seconds >= moments.joyStart && arrival < .999;
-  joyMist.visible = assembling;
-  if (assembling) {
-    joyMistMat.opacity = smooth(0, .15, arrival) * (1 - smooth(.79, 1, arrival));
-    for (let i = 0; i < particleCount; i++) {
-      const index = i * 3;
-      const curl = (1 - arrival) * Math.sin(i * 1.17 + seconds * 3);
-      positions[index] = T.MathUtils.lerp(starts[index], arrivals[index], arrival) + curl * .32;
-      positions[index + 1] = T.MathUtils.lerp(starts[index + 1], arrivals[index + 1], arrival);
-      positions[index + 2] = T.MathUtils.lerp(starts[index + 2], arrivals[index + 2], arrival) + curl * .21;
-    }
-    mistGeometry.attributes.position.needsUpdate = true;
-  }
+  drawJoyParticles(arrival, reduced);
 
   renderer.render(scene, camera);
   if (snapshotCue) imprint();

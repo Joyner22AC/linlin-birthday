@@ -423,12 +423,72 @@ for(const [x,y,z] of [[.6,.53,.08],[-.50,.28,.14],[.53,.02,.23],[-.49,-.25,0]]){
 }
 joyRing.visible=false;
 
+// Pancit bihon and calamansi, served on a glazed oval platter.
+const pancitHit = group(room, 2.80, tableHeight + .04, 2.05);
+pancitHit.rotation.y = -.24;
+const ceramic = mat('#eedfc2', .37);
+const rim = mat('#537b71', .41);
+const platter = lathe(pancitHit, ceramic, 0, 0, 0,
+  [[0,.018],[.59,.018],[.81,.042],[.92,.091],[.99,.155],[.96,.194],[.90,.170],[.80,.118],[0,.118]]);
+platter.scale.z = .69;
+const plateRim = lathe(pancitHit, rim, 0, 0, 0, [[.927,.181],[.953,.190],[.973,.182],[.986,.169]]);
+plateRim.scale.z = .69;
+
+const noodleRandom = random(2468);
+const noodleColors = ['#a16c39', '#bf8746', '#d8a15d', '#e0b475'].map((color) => mat(color, .60));
+const stock = mat('#ac7541', .66);
+round(pancitHit, stock, -.089, .184, -.035, .73, .112, .37);
+for (let i = 0; i < 33; i++) {
+  const depth = (noodleRandom() - .50) * .72;
+  const length = .62 + noodleRandom() * .80;
+  const phase = noodleRandom() * Math.PI * 2;
+  const variation = .05 + noodleRandom() * .077;
+  const xOffset = -.082 + (noodleRandom() - .50) * .15;
+  const points = Array.from({length: 17}, (_, n) => {
+    const t = n / 16;
+    const x = (t - .5) * length + xOffset;
+    const z = depth + Math.sin(t * 8 + phase) * variation;
+    const arch = Math.max(0, 1 - (x / .86) ** 2 - (z / .61) ** 2);
+    const y = .156 + Math.sqrt(arch) * (.125 + noodleRandom() * .048);
+    return [x, y, z];
+  });
+  tube(pancitHit, noodleColors[i % noodleColors.length], points, .009 + noodleRandom() * .004).castShadow = false;
+}
+const carrot = mat('#d47843', .59);
+const cabbage = mat('#a5ae57', .68);
+const scallion = mat('#50774a', .65);
+for (let i = 0; i < 28; i++) {
+  const angle = noodleRandom() * Math.PI * 2;
+  const reach = .24 + .70 * Math.sqrt(noodleRandom());
+  const x = -.085 + Math.cos(angle) * reach * .67;
+  const z = -.04 + Math.sin(angle) * reach * .35;
+  const y = .19 + .14 * Math.sqrt(1 - reach ** 2);
+  const garnish = box(pancitHit, [carrot, cabbage, scallion][i % 3],
+    x, y, z, .09 + noodleRandom() * .12, .015, i % 3 === 1 ? .052 : .024, false);
+  garnish.rotation.set(.10, angle, .12);
+}
+const citrusRind = mat('#719545', .58);
+const citrusPith = mat('#f1d98a', .71);
+const citrusFlesh = mat('#e8ad43', .49);
+for (const [x, z, tilt] of [[.59,.265,.26],[.36,.414,-.23]]) {
+  const lime = group(pancitHit, x, .185, z);
+  lime.rotation.set(tilt, .2, -.20);
+  lathe(lime, citrusRind, 0, 0, 0, [[0,0],[.105,.019],[.143,.079],[.148,.125],[0,.124]]);
+  cylinder(lime, citrusPith, 0, .127, 0, .140, .140, .010, 32);
+  for (let segment = 0; segment < 8; segment++) {
+    const angle = segment * Math.PI / 4;
+    const wedge = round(lime, citrusFlesh, .057 * Math.cos(angle), .136,
+      .057 * Math.sin(angle), .061, .010, .022);
+    wedge.rotation.y = -angle;
+  }
+}
+
 const partyColors=['#e1877a','#ead088','#8ca992','#ecc7b1'];
 const paperMats=partyColors.map((c)=>mat(c,.89));
 const pareRng=random(203);
 for(let i=0;i<72;i++){
   const x=(pareRng()-.5)*9.6, z=(pareRng()-.5)*5.7;
-  if(Math.hypot(x-.23,z-.14)<1.75)continue;
+  if (Math.hypot(x - .23, z - .14) < 1.75 || Math.hypot(x - 2.80, z - 2.05) < 1.05) continue;
   const height=.023+pareRng()*.009;
   const paper=box(room,paperMats[i%4],x,tableHeight+height,z,.036+pareRng()*.05,.006,.064+pareRng()*.06,false);
   paper.rotation.y=pareRng()*Math.PI;
@@ -449,7 +509,8 @@ const actions = new Map([
   [cakeHit, { id: 'candle', height: 2.83, radius: 1.87 }],
   [joyHit, { id: 'joy', height: 2.39, radius: .72 }],
   [letterHit, { id: 'letter', height: .22, radius: 1.02 }],
-  [lampHit, { id: 'lamp', height: 3.13, radius: .82 }]
+  [lampHit, { id: 'lamp', height: 3.13, radius: .82 }],
+  [pancitHit, { id: 'pancit', height: .34, radius: 1.03 }]
 ]);
 const objects = [...actions.keys()];
 const ray = new T.Raycaster();
@@ -490,6 +551,7 @@ const labels = {
   relight: ['重新点亮', 'Relight the candles'],
   joy: ['跟乐乐打招呼', 'Say hi to Joy'],
   letter: ['拆开信封', 'Open the envelope'],
+  pancit: ['看看这盘生日面', 'Discover the birthday noodles'],
   lamp: ['切到烛光', 'Switch to candlelight'],
   brighten: ['打开房间灯光', 'Brighten the room']
 };
@@ -578,7 +640,9 @@ function updateHover() {
   label.hidden = false;
   highlight.position.x = object.position.x;
   highlight.position.z = object.position.z;
-  highlight.scale.set(radius, radius * (id === 'letter' ? .73 : 1), 1);
+  const oval = id === 'letter' || id === 'pancit';
+  highlight.scale.set(radius, radius * (oval ? .73 : 1), 1);
+  highlight.rotation.z = oval ? object.rotation.y : 0;
   highlight.visible = true;
 }
 function updateDiscoveryMarks() {
@@ -709,6 +773,11 @@ function openWithMotion(dialogId, triggerId, duration) {
   }
   requestDraw();
 }
+$('pancit').addEventListener('click', () => {
+  if (pendingDialog || document.querySelector('dialog[open]')) return;
+  clearHover();
+  $('pancit-card').showModal();
+});
 $('joy').addEventListener('click', () => openWithMotion('joy-card', 'joy', 1050));
 $('letter').addEventListener('click', () => {
   if (!stage.closest('.failed')) openWithMotion('card', 'letter', 650);

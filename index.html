@@ -14,7 +14,7 @@ header{position:relative;pointer-events:none;z-index:1}
 header{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:clamp(18px,3vw,39px);background:linear-gradient(#1e100dbf,transparent)}
 h1{font:600 clamp(1.3rem,3vw,2.35rem)/1.16 var(--serif);margin:0;text-shadow:0 2px 15px #180900}h1 small{display:block;font-size:.54em;font-style:italic;margin-top:.42em;font-weight:400;color:var(--muted)}
 time{color:var(--muted);font-size:.78rem;letter-spacing:.12em;white-space:nowrap;text-shadow:0 1px 5px #2c170c}
-.status{position:absolute;left:50%;top:50%;width:min(85vw,32rem);transform:translate(-50%,-50%);text-align:center;color:var(--muted);line-height:1.65}.status[hidden]{display:none}.failed #stage,.failed #view,.failed #lamp,.failed #candle,.failed #joy,.failed #explore-hint{display:none}
+.status{position:absolute;left:50%;top:50%;width:min(85vw,32rem);transform:translate(-50%,-50%);text-align:center;color:var(--muted);line-height:1.65}.status[hidden]{display:none}.failed #stage,.failed #view,.failed #lamp,.failed #candle,.failed #joy,.failed #pancit,.failed #explore-hint{display:none}
 dialog{width:min(91vw,490px);max-height:90svh;overflow:auto;border:1px solid #dbb28c;padding:clamp(20px,5vw,36px);border-radius:5px;background:#fff0db;color:#462a24;box-shadow:0 24px 100px #1f100bc9;font-family:var(--serif)}
 dialog::backdrop{background:#1b100caa;backdrop-filter:blur(5px)}dialog h2{font-size:clamp(1.45rem,5vw,2rem);margin:5px 32px 15px 0;color:#853e41}dialog h2 small{display:block;font-size:.63em;font-style:italic;font-weight:400;margin-top:6px}dialog p{font-size:1.03rem;line-height:1.68;margin:10px 0}dialog p[lang]{color:#66483f}.close{position:absolute;top:10px;right:10px;min-width:44px;padding:0;background:#f0dac5;color:#683c33;font-size:1.3rem}.close:hover{background:#e7c7a9}
 #notice{position:absolute;left:50%;bottom:max(24px, calc(env(safe-area-inset-bottom) + 12px));z-index:2;transform:translateX(-50%);margin:0;width:max-content;max-width:90%;padding:9px 13px;border-radius:7px;background:#2e1d16ea;color:var(--ivory);text-align:center;font:500 .86rem/1.5 var(--ui);box-shadow:0 5px 15px #1b100b6e;pointer-events:none}#notice:empty{display:none}
@@ -109,7 +109,7 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <body>
 <main class="scene">
 <header><h1>琳琳，生日快乐！<small lang="en">Happy Birthday, Linlin!</small></h1><time datetime="2026-11-14">11 月 14 日 · <span lang="en">Nov 14</span></time></header>
-<div id="stage" role="img" aria-label="可转动视角的生日桌，放着草莓蛋糕、台灯、乐乐和信封。 A 3D birthday table with a strawberry cake, lamp, Joy, and an envelope."></div>
+<div id="stage" role="img" aria-label="可转动视角的生日桌，放着草莓蛋糕、菲律宾生日面、台灯、乐乐和信封。 A 3D birthday table with a strawberry cake, Filipino birthday noodles, a lamp, Joy, and an envelope."></div>
 <p class="status" id="loading">正在布置生日桌… <span lang="en">Setting the table…</span></p>
 <div id="object-label" aria-hidden="true" hidden></div>
 <p id="notice" role="status"></p>
@@ -119,12 +119,14 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <button class="object-action" type="button" id="lamp" aria-pressed="false">台灯<span lang="en">Lamp</span></button>
 <button class="object-action" type="button" id="candle" aria-pressed="false">吹蜡烛<span lang="en">Blow candles</span></button>
 <button class="object-action" type="button" id="joy" aria-haspopup="dialog" aria-controls="joy-card">乐乐<span lang="en">Joy</span></button>
+<button class="object-action" type="button" id="pancit" aria-haspopup="dialog" aria-controls="pancit-card">菲律宾生日面<span lang="en">Pancit bihon</span></button>
 <button class="object-action" type="button" id="letter" aria-haspopup="dialog" aria-controls="card">打开贺卡<span lang="en">Open card</span></button>
 </div>
 </main>
 <dialog id="card" aria-labelledby="card-title">
 <form method="dialog"><button class="close" type="submit" aria-label="关闭 · Close">×</button></form>
 <h2 id="card-title">给琳琳<small lang="en">For Linlin</small></h2>
+<p lang="tl"><strong>Maligayang kaarawan, Linlin!</strong></p>
 <p>琳琳，生日快乐！愿你新的一岁学业顺利，碰到难题时总能慢慢找到思路，付出的努力也能收获自己满意的结果。更希望你身体健康，吃得好、睡得香，忙的时候也能好好照顾自己。</p>
 <p lang="en">Happy birthday, Linlin! I hope your studies go well this year, that you find your way through the tough problems, and that your hard work pays off in ways you’re proud of. Most of all, I wish you good health, good meals, restful nights, and time to take care of yourself when life gets busy.</p>
 <p>很开心能和你做朋友。希望往后的许多年，我们还会把遇见的趣事第一时间讲给对方听，也还会一起庆祝很多个生日。愿我们的友谊一直走下去。</p>
@@ -135,6 +137,12 @@ dialog[open] { animation: unfold .24s ease-out both; }
 <h2 id="joy-title">乐乐来给你过生日啦！<small lang="en">A note from Joy</small></h2>
 <p>琳琳，听说你也扮演过我！这次换我来给你庆生。祝你学得顺、睡得香、身体棒！遇到好消息，记得和朋友一起庆祝呀。</p>
 <p lang="en">I heard you dressed up as me once, Linlin! Now it’s my turn to celebrate you. I hope your studies go well, you sleep soundly, and you stay healthy. And when good news comes, remember to celebrate with friends!</p>
+</dialog>
+<dialog id="pancit-card" aria-labelledby="pancit-title">
+<form method="dialog"><button class="close" type="submit" aria-label="关闭 · Close">×</button></form>
+<h2 id="pancit-title"><span lang="tl">Pancit bihon</span><small>菲律宾生日面 · <span lang="en">Filipino birthday noodles</span></small></h2>
+<p>菲律宾的生日聚会上常有一盘 pancit。长长的面条寄托着长寿的祝愿。这盘特意留给你，琳琳。愿你新的一岁健健康康，也愿我们的友谊长长久久。</p>
+<p lang="en">Pancit is often served at Filipino birthdays, where its long noodles are a wish for a long life. This plate is for you, Linlin. Wishing you good health and many more years of friendship.</p>
 </dialog>
 <script>
 const card = document.querySelector('#card');
@@ -151,7 +159,7 @@ window.showTableFallback = () => {
 };
 </script>
 <script type="module">
-import('./table.js?v=3').catch((error) => { console.error(error); window.showTableFallback(); });
+import('./table.js?v=pancit').catch((error) => { console.error(error); window.showTableFallback(); });
 </script>
 </body>
 </html>
